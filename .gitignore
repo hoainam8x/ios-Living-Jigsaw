@@ -1,0 +1,69 @@
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+*.pbxuser
+.DS_Store
+Pods/
+# Swift Package Manager
+.build/
+# CocoaPods
+Pods/
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+
+# Keys
+*.keystore
+
+# User settings
+*.xcuserdatad
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the project but should not be committed
+*.swp
+*~
+
+# Video assets (if large, consider not committing)
+#Video/
+
+# Ignore build outputs
+*.o
+*.linkfilelist
+
+# Ignore Xcode archive
+*.xcarchive
+
+# Derived files
+*.hmap
+
+# Ignore provisioning profiles
+*.mobileprovision
+
+# Bundle temporary files
+*.tmp
+
+# Carthage
+Carthage/Build
+
+# Archives
+*.ipa
+
+# Misc
+.idea
+.vscode

@@ -1,0 +1,98 @@
+"splash_title" = "Infinite Pieces";
+"splash_sub" = "Duna Ecosystem";
+"splash_vocal" = "Infinite Pieces. Trò chơi xếp hình điện ảnh hòa nhập. Ghép từng khoảnh khắc, cảm nhận dòng chảy.";
+"splash_tagline" = "Ghép từng khoảnh khắc, cảm nhận dòng chảy";
+
+"theme_select_title" = "Chọn vũ trụ của bạn";
+"theme_select_hint" = "Rừng già, đại dương, hay thiên hà — mỗi chủ đề có âm thanh riêng.";
+"theme_forest_name" = "Rừng già";
+"theme_forest_desc" = "Tiếng nước chảy, lá xào xạc, chim trên tán.";
+"theme_ocean_name" = "Đại dương";
+"theme_ocean_desc" = "Sóng chậm, sấm xa, ánh sinh học lơ lửng.";
+"theme_galaxy_name" = "Thiên hà";
+"theme_galaxy_desc" = "Gió vũ trụ nhẹ, hợp âm chậm, tinh vân trôi.";
+
+"gameplay_title" = "Tìm dòng chảy khớp nhau";
+"gameplay_calm" = "Duy trì sự tĩnh tại. Tìm dòng chảy khớp nhau.";
+"gameplay_next" = "Tiếp tục";
+"gameplay_audio_hint" = "Dùng tai nghe để cảm nhận vị trí âm thanh.";
+"gameplay_piece_gesture_hint" = "Giữ rồi kéo để di chuyển; chạm nhanh xoay 90°.";
+"piece_rotated_a11y" = "Đã xoay 90 độ";
+"piece_connected" = "Đã ghép mảnh";
+"a11y_piece_live_motion" = "Mảnh ghép đang chuyển động";
+
+"bloom_title" = "Khoảnh khắc hồi sinh";
+"ad_banner_label" = "Quảng cáo";
+
+"continue_action" = "Tiếp tục";
+
+"piece_forest_0" = "Mảnh này có ánh sáng tán cây lung lay cùng bóng lá.";
+"piece_forest_1" = "Mảnh này có bóng chim bay qua khung hình.";
+"piece_forest_2" = "Mảnh này có vỏ cây rêu phủ, chuyển động chậm theo chiều dọc.";
+"piece_forest_3" = "Mảnh này có dòng suối mảnh lấp lánh chảy xuống.";
+
+"piece_ocean_0" = "Mảnh này có bọt sóng trôi ngang nước nông.";
+"piece_ocean_1" = "Mảnh này có sóng xanh đậm lên xuống chậm rãi.";
+"piece_ocean_2" = "Mảnh này có đàn cá nhỏ lấp lánh như kim tuyến.";
+"piece_ocean_3" = "Mảnh này có tia nắng rung rinh trong cột nước tối hơn.";
+
+"piece_galaxy_0" = "Mảnh này có mây bụi tím loe dần ra ngoài.";
+"piece_galaxy_1" = "Mảnh này có cụm sao ấm nhấp nháy nhịp nhẹ.";
+"piece_galaxy_2" = "Mảnh này có vòng cung xanh lạnh quay chậm như la bàn.";
+"piece_galaxy_3" = "Mảnh này có cánh xoắn mờ trôi ngược chiều kim đồng hồ.";
+
+"home_play_now" = "Chơi ngay";
+"home_level_menu" = "Chọn level";
+"home_close_menu" = "Đóng";
+"home_back" = "Trang chủ";
+"home_progress_label" = "Tiếp tục hành trình";
+"level_map_hint" = "Mở level theo thứ tự — xong mới mở được level kế. Vàng là level đã qua.";
+
+"stage1_title" = "Giai đoạn 1: Thiên nhiên chữa lành (Level 1–4)";
+"stage1_goal" = "Tông xanh dịu, chuyển động chậm — làm quen ghép động.";
+"stage2_title" = "Giai đoạn 2: Nhịp sống đô thị — Zen Urban (Level 5–8)";
+"stage2_goal" = "Vibe neon Duna, chuyển động rõ hơn, độ khó tăng.";
+"stage3_title" = "Giai đoạn 3: Vũ trụ huyền ảo — Cosmic Beyond (Level 9–12)";
+"stage3_goal" = "Xoay tròn, trừu tượng — dẫn tới Cosmic Breath.";
+
+"level_01_title" = "Level 1 — Thác đầu tiên";
+"level_01_subtitle" = "Thác nhiệt đới ẩn, nước mượt, sương mù.";
+"level_02_title" = "Level 2 — Hồ sen buổi sớm";
+"level_02_subtitle" = "Sen hồng, gợn sóng, chuồn chuồn bay chậm.";
+"level_03_title" = "Level 3 — Rừng phong mùa thu";
+"level_03_subtitle" = "Lối phong đỏ, lá rơi lên ghế, gió nhẹ.";
+"level_04_title" = "Level 4 — Biển đêm";
+"level_04_subtitle" = "Sóng chậm, sinh vật phát sáng, ánh trăng.";
+
+"level_05_title" = "Level 5 — Mưa qua ô cửa bus";
+"level_05_subtitle" = "Giọt mưa trên kính, bokeh đèn xanh tím.";
+"level_06_title" = "Level 6 — Phố cổ đèn lồng";
+"level_06_subtitle" = "Hội An đêm, đèn lụa lay nhẹ.";
+"level_07_title" = "Level 7 — Quán cà phê vắng";
+"level_07_subtitle" = "Hơi cà phê, neon ngoài cửa.";
+"level_08_title" = "Level 8 — Thành phố tương lai";
+"level_08_subtitle" = "Nhìn từ trên, vệt sáng xe bay, tím & teal.";
+
+"level_09_title" = "Level 9 — Tinh vân lôi cuốn";
+"level_09_subtitle" = "Tinh vân tím xoáy, bụi sao trôi vào giữa.";
+"level_10_title" = "Level 10 — Hố đen ánh sáng";
+"level_10_subtitle" = "Bẻ cong ánh sáng, đĩa hấp thụ vàng.";
+"level_11_title" = "Level 11 — Mưa sao băng";
+"level_11_subtitle" = "Sao băng, cực quang tím, dải ngân hà.";
+"level_12_title" = "Level 12 — Mầm sống vũ trụ";
+"level_12_subtitle" = "Hạt phát sáng, rễ ánh sáng, thiên hà xanh quay.";
+
+"stage1_piece_0" = "Phía trên: sương nhẹ, dòng nước chậm dọc.";
+"stage1_piece_1" = "Bên: dương xỉ, chuyển động ngang nhẹ.";
+"stage1_piece_2" = "Dòng chảy: thác mượt chảy xuống.";
+"stage1_piece_3" = "Góc: đá tối, lấp lánh tinh tế.";
+
+"stage2_piece_0" = "Vệt mưa trượt trên kính.";
+"stage2_piece_1" = "Đèn phố bokeh nhấp nháy chậm.";
+"stage2_piece_2" = "Ánh đèn lồng ấm lay động.";
+"stage2_piece_3" = "Viền neon xanh-tím chớp nhẹ.";
+
+"stage3_piece_0" = "Tinh vân tím xoáy về trung tâm.";
+"stage3_piece_1" = "Vòng sáng vàng quay nhanh.";
+"stage3_piece_2" = "Sao băng kéo vệt trên nền tối.";
+"stage3_piece_3" = "Thiên hà hạt xanh quay chậm quanh hạt.";

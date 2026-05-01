@@ -1,0 +1,108 @@
+/* Splash */
+"splash_title" = "Infinite Pieces";
+"splash_sub" = "Duna Ecosystem";
+"splash_vocal" = "Infinite Pieces. An inclusive cinematic puzzle. Piece the moments, feel the flow.";
+"splash_tagline" = "Piece the Moments, Feel the Flow";
+
+/* Theme select */
+"theme_select_title" = "Choose your universe";
+"theme_select_hint" = "Forest, ocean, or galaxy. Each has its own calm soundscape.";
+"theme_forest_name" = "Ancient Forest";
+"theme_forest_desc" = "Water trickling, leaves rustling, birds in the canopy.";
+"theme_ocean_name" = "Deep Ocean";
+"theme_ocean_desc" = "Slow waves, distant thunder, bioluminescent drift.";
+"theme_galaxy_name" = "Stellar Galaxy";
+"theme_galaxy_desc" = "Soft cosmic winds, gentle arpeggios, slow nebula drift.";
+
+/* Gameplay */
+"gameplay_title" = "Find the matching flow";
+"gameplay_calm" = "Stay still. Match the motion.";
+"gameplay_next" = "Continue";
+"gameplay_audio_hint" = "Use headphones to feel where sounds sit in space.";
+"gameplay_piece_gesture_hint" = "Hold, then drag to move. Quick tap rotates 90°.";
+"piece_rotated_a11y" = "Rotated 90 degrees";
+"piece_connected" = "Piece connected";
+"a11y_piece_live_motion" = "Puzzle piece is in motion";
+
+/* Bloom */
+"bloom_title" = "Moment restored";
+/* Ads */
+"ad_banner_label" = "Advertisement";
+
+/* Voice commands help */
+"continue_action" = "Continue";
+
+/* Piece audio descriptions — forest */
+"piece_forest_0" = "This piece shows bright canopy light swaying with leaf shadows.";
+"piece_forest_1" = "This piece shows a bird silhouette crossing the frame.";
+"piece_forest_2" = "This piece shows mossy bark texture with slow vertical drift.";
+"piece_forest_3" = "This piece shows a thin stream glinting as it moves downward.";
+
+/* Ocean */
+"piece_ocean_0" = "Foam lines slide sideways along shallow water.";
+"piece_ocean_1" = "Deep blue swells rise and fall in slow rhythm.";
+"piece_ocean_2" = "School of tiny fish flickers like silver confetti.";
+"piece_ocean_3" = "Sun shafts shimmer through darker water columns.";
+
+/* Galaxy */
+"piece_galaxy_0" = "Violet dust clouds slowly billow outward.";
+"piece_galaxy_1" = "Warm star clusters twinkle in gentle pulses.";
+"piece_galaxy_2" = "Cool cyan arcs orbit the frame like a slow compass.";
+"piece_galaxy_3" = "Faint spiral arms drift counterclockwise.";
+
+/* Home & levels */
+"home_play_now" = "Play now";
+"home_level_menu" = "Levels";
+"home_close_menu" = "Close";
+"home_back" = "Home";
+"home_progress_label" = "Continue your path";
+"level_map_hint" = "Levels unlock in order — finish one to open the next. Gold marks a cleared level.";
+
+"stage1_title" = "Phase 1: Healing Nature (Levels 1–4)";
+"stage1_goal" = "Soft greens, slow motion — learn the living jigsaw.";
+"stage2_title" = "Phase 2: Zen Urban (Levels 5–8)";
+"stage2_goal" = "Neon mood, brighter motion — closer to Duna’s vibe.";
+"stage3_title" = "Phase 3: Cosmic Beyond (Levels 9–12)";
+"stage3_goal" = "Circular, abstract flow — toward Cosmic Breath.";
+
+"level_01_title" = "Level 1 — The First Drop";
+"level_01_subtitle" = "Hidden tropical waterfall, silky water, mist.";
+"level_02_title" = "Level 2 — Zen Lotus";
+"level_02_subtitle" = "Lotus close-up, ripples, slow dragonfly.";
+"level_03_title" = "Level 3 — Autumn Whispers";
+"level_03_subtitle" = "Maple path, leaves on a bench, soft wind.";
+"level_04_title" = "Level 4 — Moonlit Tide";
+"level_04_subtitle" = "Night beach, slow waves, bioluminescence.";
+
+"level_05_title" = "Level 5 — Rainy Reflection";
+"level_05_subtitle" = "Bus window rain, blue-purple city bokeh.";
+"level_06_title" = "Level 6 — Lantern Street";
+"level_06_subtitle" = "Hội An at night, swaying silk lanterns.";
+"level_07_title" = "Level 7 — Midnight Coffee";
+"level_07_subtitle" = "Steam from coffee, neon outside.";
+"level_08_title" = "Level 8 — Cyberpunk Flow";
+"level_08_subtitle" = "Future city top-down, light trails, teal & purple.";
+
+"level_09_title" = "Level 9 — The Nebula";
+"level_09_subtitle" = "Violet nebula swirl, drifting star dust.";
+"level_10_title" = "Level 10 — Singularity";
+"level_10_subtitle" = "Black hole lensing, glowing accretion disk.";
+"level_11_title" = "Level 11 — Star Shower";
+"level_11_subtitle" = "Shooting stars, aurora, milky way.";
+"level_12_title" = "Level 12 — The Cosmic Seed";
+"level_12_subtitle" = "Glowing seed, roots of light, spinning galaxy.";
+
+"stage1_piece_0" = "Upper area: soft mist and slow vertical water streaks.";
+"stage1_piece_1" = "Side: ferns and gentle sideways drift.";
+"stage1_piece_2" = "Lower flow: silky cascade moving downward.";
+"stage1_piece_3" = "Corner: darker rocks with subtle shimmer.";
+
+"stage2_piece_0" = "Rain streaks sliding on glass.";
+"stage2_piece_1" = "Bokeh city lights pulsing slowly.";
+"stage2_piece_2" = "Warm lantern glow swaying.";
+"stage2_piece_3" = "Neon edge with cyan-purple flicker.";
+
+"stage3_piece_0" = "Violet nebula swirl toward center.";
+"stage3_piece_1" = "Gold accretion light spinning fast.";
+"stage3_piece_2" = "Streaking meteors across dark sky.";
+"stage3_piece_3" = "Green particle galaxy orbiting slowly.";
