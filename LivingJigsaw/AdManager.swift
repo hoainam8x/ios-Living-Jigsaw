@@ -1,16 +1,21 @@
 import Foundation
+import GoogleMobileAds
 
-/// Zero‑footprint hook: wire `GoogleMobileAds` + Remote Config IDs in a future change set.
+/// Khởi tạo SDK; unit ID lấy từ `AppConfig` (Debug = test cố định, Release = plist / biến build `ADMOB_*`).
 final class AdManager {
     static let shared = AdManager()
 
     func prepareOnLaunch() {
-        _ = AppConfig.admobBannerUnitID
-        _ = AppConfig.admobInterstitialUnitID
+        #if DEBUG
+        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = ["GADSimulatorID"]
+        #endif
+        MobileAds.shared.start(completionHandler: { _ in
+            _ = AppConfig.admobBannerUnitID
+            _ = AppConfig.admobInterstitialUnitID
+        })
     }
 
     func presentInterstitialAfterPuzzleIfAllowed() {
-        guard !AppConfig.isDebugBuild else { return }
         // GADInterstitialAd.load(withAdUnitID: AppConfig.admobInterstitialUnitID, ...)
     }
 }

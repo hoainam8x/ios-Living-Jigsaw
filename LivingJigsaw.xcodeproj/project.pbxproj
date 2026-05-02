@@ -36,6 +36,7 @@
 		A10000000000000000000020 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000024 /* HomeView.swift */; };
 		A10000000000000000000021 /* LevelMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000025 /* LevelMenuView.swift */; };
 		A10000000000000000000026 /* NatureChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000026 /* NatureChrome.swift */; };
+		A10000000000000000000027 /* AdMobAnchoredBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000027 /* AdMobAnchoredBannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +62,7 @@
 		B10000000000000000000024 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B10000000000000000000025 /* LevelMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMenuView.swift; sourceTree = "<group>"; };
 		B10000000000000000000026 /* NatureChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NatureChrome.swift; sourceTree = "<group>"; };
+		B10000000000000000000027 /* AdMobAnchoredBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobAnchoredBannerView.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* VideoJigsawManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoJigsawManager.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* Video */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Video; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				B10000000000000000000010 /* SpatialAmbientAudio.swift */,
 				B10000000000000000000011 /* VocalAIService.swift */,
 				B10000000000000000000013 /* AdManager.swift */,
+				B10000000000000000000027 /* AdMobAnchoredBannerView.swift */,
 				B10000000000000000000014 /* AccessibilityBannerSlot.swift */,
 				B10000000000000000000015 /* Assets.xcassets */,
 				B10000000000000000000017 /* Info.plist */,
@@ -243,6 +246,7 @@
 				A10000000000000000000010 /* SpatialAmbientAudio.swift in Sources */,
 				A10000000000000000000011 /* VocalAIService.swift in Sources */,
 				A10000000000000000000013 /* AdManager.swift in Sources */,
+				A10000000000000000000027 /* AdMobAnchoredBannerView.swift in Sources */,
 				A10000000000000000000014 /* AccessibilityBannerSlot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -390,6 +394,9 @@
 		G10000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
+				ADMOB_BANNER_UNIT_ID = "ca-app-pub-3940256099942544/2435281174";
+				ADMOB_INTERSTITIAL_UNIT_ID = "ca-app-pub-3940256099942544/4411468910";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -416,6 +423,9 @@
 		G10000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
+				ADMOB_BANNER_UNIT_ID = "ca-app-pub-3940256099942544/2435281174";
+				ADMOB_INTERSTITIAL_UNIT_ID = "ca-app-pub-3940256099942544/4411468910";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;

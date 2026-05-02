@@ -35,7 +35,7 @@ final class VideoJigsawManager: ObservableObject {
             }
         }
 
-        for ext in ["mp4", "m4v", "mov"] {
+        for ext in ["mp4", "MP4", "m4v", "M4V", "mov", "MOV"] {
             if let found = Bundle.main.urls(forResourcesWithExtension: ext, subdirectory: "Video") {
                 collected.append(contentsOf: found)
             }
@@ -48,12 +48,16 @@ final class VideoJigsawManager: ObservableObject {
         }
     }
 
-    /// Khớp file `Level01.mp4`, `Level02.mov`, … (không phân biệt hoa thường).
+    /// Khớp `Level01.mp4`, `Level01-Ten.mp4`, `LEVEL02_clip.MOV`, … (không phân biệt hoa thường).
     func resolvedURL(forLevelId levelId: Int) -> URL? {
         refreshDiscoveredVideos()
-        let target = "level\(String(format: "%02d", levelId))"
-        return discoveredVideoURLs.first {
-            $0.deletingPathExtension().lastPathComponent.lowercased() == target
+        let key = "level\(String(format: "%02d", levelId))"
+        return discoveredVideoURLs.first { url in
+            let stem = url.deletingPathExtension().lastPathComponent.lowercased()
+            if stem == key { return true }
+            if stem.hasPrefix(key + "-") { return true }
+            if stem.hasPrefix(key + "_") { return true }
+            return false
         }
     }
 

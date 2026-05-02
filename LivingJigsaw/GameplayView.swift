@@ -195,11 +195,11 @@ struct GameplayView: View {
             if !admirePhaseActive {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    AccessibilityBannerSlot()
+                        .allowsHitTesting(false)
+                    GameplayAdBannerSlot()
                         .padding(.horizontal, 12)
                         .padding(.bottom, 12)
                 }
-                .allowsHitTesting(false)
             }
         }
         .frame(width: geo.size.width, height: geo.size.height)

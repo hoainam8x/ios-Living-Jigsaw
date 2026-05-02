@@ -172,12 +172,26 @@ final class VideoSyncCoordinator: ObservableObject {
 
     private static func bundleURLInVideoFolder(levelId: Int) -> URL? {
         let stem = String(format: "Level%02d", levelId)
-        for ext in ["mp4", "m4v", "mov"] {
+        for ext in ["mp4", "m4v", "mov", "MP4", "MOV", "M4V"] {
             if let u = Bundle.main.url(forResource: stem, withExtension: ext, subdirectory: "Video") {
                 return u
             }
         }
-        return nil
+        let key = stem.lowercased()
+        guard let videoDir = Bundle.main.resourceURL?.appendingPathComponent("Video", isDirectory: true),
+              let urls = try? FileManager.default.contentsOfDirectory(
+                at: videoDir,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+              )
+        else { return nil }
+        let allowedExt: Set<String> = ["mp4", "m4v", "mov"]
+        return urls.first { url in
+            let nameStem = url.deletingPathExtension().lastPathComponent.lowercased()
+            let ext = url.pathExtension.lowercased()
+            guard allowedExt.contains(ext) else { return false }
+            return nameStem == key || nameStem.hasPrefix("\(key)-") || nameStem.hasPrefix("\(key)_")
+        }
     }
 
     private static func applyLightweightDecodeHints(to item: AVPlayerItem) {

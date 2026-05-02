@@ -40,7 +40,7 @@ playground.xcworkspace
 *~
 
 # Video assets (if large, consider not committing)
-#Video/
+Video/
 
 # Ignore build outputs
 *.o
