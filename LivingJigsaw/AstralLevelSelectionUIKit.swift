@@ -102,7 +102,7 @@ final class AstralLevelCell: UICollectionViewCell {
         parallaxHost.addSubview(diskContainer)
 
         thumbView.translatesAutoresizingMaskIntoConstraints = false
-        thumbView.contentMode = .scaleAspectFill
+        thumbView.contentMode = .scaleAspectFit
         thumbView.clipsToBounds = true
         diskContainer.addSubview(thumbView)
 
@@ -277,10 +277,10 @@ final class AstralLevelSelectionViewController: UIViewController, UICollectionVi
 
         glowShape.fillColor = UIColor.clear.cgColor
         glowShape.strokeColor = UIColor.white.cgColor
-        glowShape.lineWidth = 6
+        glowShape.lineWidth = 5
         glowShape.lineCap = .round
         glowShape.lineJoin = .round
-        glowShape.lineDashPattern = [14, 10]
+        glowShape.lineDashPattern = [10, 8]
         glowGradientLayer.mask = glowShape
 
         let glowFlow = CABasicAnimation(keyPath: "locations")
@@ -504,7 +504,7 @@ final class AstralLevelSelectionViewController: UIViewController, UICollectionVi
         let player = AVPlayer(url: url)
         player.isMuted = true
         let layer = AVPlayerLayer(player: player)
-        layer.videoGravity = .resizeAspectFill
+        layer.videoGravity = .resizeAspect
         let host = cell.videoHost
         host.layoutIfNeeded()
         layer.frame = host.bounds
@@ -548,19 +548,33 @@ final class AstralLevelSelectionViewController: UIViewController, UICollectionVi
         var centers: [CGPoint] = []
         for i in 0..<levels.count {
             guard let attr = cv.layoutAttributesForItem(at: IndexPath(item: i, section: 0)) else { continue }
-            let pt = cv.convert(attr.center, to: glowHost)
+            let pt: CGPoint
+            if let cell = cv.cellForItem(at: IndexPath(item: i, section: 0)) as? AstralLevelCell {
+                let m = CGPoint(x: cell.videoHost.bounds.midX, y: cell.videoHost.bounds.midY)
+                pt = cell.videoHost.convert(m, to: glowHost)
+            } else {
+                var c = cv.convert(attr.center, to: glowHost)
+                let zigOffset: CGFloat = (i % 2 == 0) ? -zig : zig
+                c.x += zigOffset
+                pt = c
+            }
             centers.append(pt)
         }
         guard centers.count > 1 else { return }
         let path = UIBezierPath()
         path.move(to: centers[0])
-        for i in 1..<centers.count {
-            let prev = centers[i - 1]
-            let cur = centers[i]
-            let midX = (prev.x + cur.x) * 0.5
-            let c1 = CGPoint(x: midX, y: prev.y)
-            let c2 = CGPoint(x: midX, y: cur.y)
-            path.addCurve(to: cur, controlPoint1: c1, controlPoint2: c2)
+        for i in 0..<(centers.count - 1) {
+            let p0 = centers[i]
+            let p1 = centers[i + 1]
+            let mid = CGPoint(x: (p0.x + p1.x) * 0.5, y: (p0.y + p1.y) * 0.5)
+            let dx = p1.x - p0.x
+            let dy = p1.y - p0.y
+            let len = max(hypot(dx, dy), 1)
+            let nx = -dy / len
+            let ny = dx / len
+            let wave = CGFloat(sin(Double(i) * 0.88 + 0.15) * 36 + cos(Double(i) * 0.47) * 14)
+            let ctrl = CGPoint(x: mid.x + nx * wave, y: mid.y + ny * wave)
+            path.addQuadCurve(to: p1, controlPoint: ctrl)
         }
         glowGradientLayer.frame = glowHost.bounds
         glowShape.frame = CGRect(origin: .zero, size: glowHost.bounds.size)

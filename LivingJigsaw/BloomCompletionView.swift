@@ -50,7 +50,8 @@ struct BloomCelebrationOverlayPanel: View {
 
                 Color.black.opacity(0.22).ignoresSafeArea()
             } else {
-                Color.black.opacity(0.48).ignoresSafeArea()
+                /// Giữ video/ảnh gameplay sáng — chỉ veiling rất nhẹ để chữ đọc được.
+                Color.black.opacity(0.06).ignoresSafeArea()
             }
 
             if !reduceMotion {

@@ -80,7 +80,7 @@ struct GameplayView: View {
         ZStack {
             NatureBackground(variant: .gameplayDim)
                 .ignoresSafeArea()
-            Color.black.opacity(0.45)
+            Color.black.opacity(admirePhaseActive || bloomCelebrationPresented ? 0.1 : 0.45)
                 .ignoresSafeArea()
 
             gameplayGeometry()
@@ -308,21 +308,21 @@ struct GameplayView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         admireBoardScale = 1.012
-                        admireVideoBrightness = 0.045
+                        admireVideoBrightness = 0.08
                     }
                 }
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     withAnimation(.spring(response: 0.72, dampingFraction: 0.68)) {
                         admireBoardScale = 1.048
-                        admireVideoBrightness = 0.09
+                        admireVideoBrightness = 0.14
                     }
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
                     guard admirePhaseActive else { return }
                     withAnimation(.easeOut(duration: 0.65)) {
                         admireBoardScale = 1.018
-                        admireVideoBrightness = 0.05
+                        admireVideoBrightness = 0.1
                     }
                 }
             }
