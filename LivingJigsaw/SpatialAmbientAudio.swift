@@ -118,20 +118,25 @@ final class SpatialAmbientAudio: ObservableObject {
         right.play()
     }
 
+    /// Vang settle sau snap (gọi từ sync để tránh cảnh báo overload `async` của `scheduleBuffer` khi đứng trước `play()`).
+    private func playSnapSettleTail() {
+        guard started, let settleBuffer else { return }
+        left.volume = 0.22
+        right.volume = 0.22
+        left.stop()
+        right.stop()
+        left.scheduleBuffer(settleBuffer, at: nil, options: .interrupts, completionHandler: nil)
+        right.scheduleBuffer(settleBuffer, at: nil, options: .interrupts, completionHandler: nil)
+        left.play()
+        right.play()
+    }
+
     /// Snap đúng — hợp âm + vang ngắn.
     func playSnapLayeredSuccess() {
         playHarmonicChord()
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            guard self.started, let settleBuffer = self.settleBuffer else { return }
-            self.left.volume = 0.22
-            self.right.volume = 0.22
-            self.left.stop()
-            self.right.stop()
-            self.left.scheduleBuffer(settleBuffer, at: nil, options: .interrupts, completionHandler: nil)
-            self.right.scheduleBuffer(settleBuffer, at: nil, options: .interrupts, completionHandler: nil)
-            self.left.play()
-            self.right.play()
+            try? await Task.sleep(for: .milliseconds(100))
+            self.playSnapSettleTail()
         }
     }
 
