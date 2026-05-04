@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Bảng màu & khối UI dùng chung — thiên nhiên + accent luxury (champagne, viền vàng).
 enum NaturePalette {
+    // Base nature colors
     static let deepForest = Color(red: 0.06, green: 0.12, blue: 0.08)
     static let canopy = Color(red: 0.11, green: 0.24, blue: 0.13)
     static let mossMid = Color(red: 0.20, green: 0.40, blue: 0.22)
@@ -16,6 +17,15 @@ enum NaturePalette {
     static let goldRing = Color(red: 0.92, green: 0.74, blue: 0.28)
     static let champagne = Color(red: 0.94, green: 0.90, blue: 0.78)
     static let platinum = Color(red: 0.72, green: 0.78, blue: 0.80)
+    
+    // Luxury accent colors
+    static let rosegold = Color(red: 0.95, green: 0.76, blue: 0.66)
+    static let amber = Color(red: 1.0, green: 0.75, blue: 0.0)
+    static let emerald = Color(red: 0.31, green: 0.78, blue: 0.47)
+    static let sapphire = Color(red: 0.06, green: 0.32, blue: 0.73)
+    static let pearl = Color(red: 0.98, green: 0.98, blue: 0.95)
+    static let obsidian = Color(red: 0.08, green: 0.08, blue: 0.10)
+    static let copper = Color(red: 0.72, green: 0.45, blue: 0.20)
 
     static let homeSkyGradient = LinearGradient(
         colors: [
@@ -65,6 +75,39 @@ enum NaturePalette {
 
     static let titleLuxuryGradient = LinearGradient(
         colors: [cream, champagne, dew],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    // New luxury gradients
+    static let cardGlowGradient = LinearGradient(
+        colors: [goldRing.opacity(0.6), rosegold.opacity(0.5), amber.opacity(0.4)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let premiumCardBackground = LinearGradient(
+        colors: [
+            obsidian.opacity(0.85),
+            deepForest.opacity(0.75),
+            canopy.opacity(0.65)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let heroGradient = LinearGradient(
+        colors: [pearl, champagne, rosegold, goldRing],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let accentShimmer = LinearGradient(
+        colors: [
+            Color.white.opacity(0.0),
+            Color.white.opacity(0.4),
+            Color.white.opacity(0.0)
+        ],
         startPoint: .leading,
         endPoint: .trailing
     )

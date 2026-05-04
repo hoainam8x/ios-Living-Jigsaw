@@ -9,131 +9,59 @@ struct HomeView: View {
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var isPreparingUserMedia = false
     @State private var userMediaError: String?
+    @State private var shimmerOffset: CGFloat = -200
 
     private var currentId: Int { GameProgress.currentLevelId }
     private var currentLevel: LevelDefinition { .level(currentId) }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             NatureBackground(variant: .home)
 
             VStack(spacing: 0) {
-                Spacer(minLength: 12)
-
-                ZStack {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [NaturePalette.canopy.opacity(0.9), NaturePalette.deepForest],
-                                center: .center,
-                                startRadius: 8,
-                                endRadius: 64
-                            )
-                        )
-                        .frame(width: 100, height: 100)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                                .stroke(NaturePalette.luxuryStrokeGradient.opacity(0.85), lineWidth: 1.5)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                                .stroke(NaturePalette.leaf.opacity(0.35), lineWidth: 3)
-                                .blur(radius: 4)
-                        )
-                        .shadow(color: Color.black.opacity(0.5), radius: 16, y: 8)
-                        .shadow(color: NaturePalette.goldRing.opacity(0.35), radius: 22, y: 0)
-                    Image(systemName: "square.grid.3x3.fill")
-                        .font(.system(size: 40, weight: .medium))
-                        .foregroundStyle(NaturePalette.sunButtonGradient)
-                        .shadow(color: NaturePalette.champagne.opacity(0.4), radius: 8)
-                }
-                .padding(.bottom, 16)
-
-                Text("DUNA")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .kerning(3)
-                    .foregroundStyle(NaturePalette.cream.opacity(0.85))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule().fill(NaturePalette.bark.opacity(0.85))
-                            .overlay(Capsule().stroke(NaturePalette.mossLight.opacity(0.4), lineWidth: 1))
-                    )
-                    .padding(.bottom, 10)
-
-                Text(String(localized: "splash_title"))
-                    .font(.system(size: 31, weight: .black, design: .rounded))
-                    .tracking(0.4)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(NaturePalette.titleLuxuryGradient)
-                    .shadow(color: NaturePalette.mossLight.opacity(0.4), radius: 16, y: 3)
-                    .shadow(color: NaturePalette.goldRing.opacity(0.22), radius: 24, y: 0)
-                    .padding(.horizontal, 16)
-
-                Text(String(localized: "splash_tagline"))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(NaturePalette.cream.opacity(0.72))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 8)
-
-                progressCapsule
-                    .padding(.horizontal, 22)
-                    .padding(.top, 22)
-
                 Spacer(minLength: 20)
-
-                VStack(spacing: 12) {
-                    Button(action: {
-                        HapticsService.playMenuTap()
-                        onPlayCurrent()
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "play.fill")
-                            Text(String(localized: "home_play_now"))
-                        }
-                    }
-                    .buttonStyle(NaturePrimaryButtonStyle())
-
-                    Button(action: {
-                        HapticsService.playMenuTap()
-                        onOpenLevelMenu()
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "map.fill")
-                            Text(String(localized: "home_level_menu"))
-                        }
-                    }
-                    .buttonStyle(NatureSecondaryButtonStyle())
-
-                    PhotosPicker(
-                        selection: $photoPickerItem,
-                        matching: .any(of: [.images, .videos]),
-                        photoLibrary: .shared()
-                    ) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "photo.on.rectangle.angled")
-                            Text(String(localized: "home_pick_media"))
-                        }
-                    }
-                    .buttonStyle(NatureSecondaryButtonStyle())
-                    .disabled(isPreparingUserMedia)
-                }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 28)
-
-                NatureSoilFooter()
-                    .frame(maxWidth: .infinity)
+                
+                // Hero Section with animated logo
+                heroSection
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                
+                // Current Progress Card
+                progressCard
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 18)
+                
+                // Action Cards Grid
+                actionCardsGrid
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                
+                Spacer(minLength: 20)
             }
         }
         .foregroundStyle(NaturePalette.cream)
         .overlay {
             if isPreparingUserMedia {
                 ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    ProgressView(String(localized: "home_pick_media_preparing"))
-                        .padding(20)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Color.black.opacity(0.45).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.3)
+                            .tint(NaturePalette.goldRing)
+                        Text(String(localized: "home_pick_media_preparing"))
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(NaturePalette.cream)
+                    }
+                    .padding(32)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(NaturePalette.luxuryStrokeGradient, lineWidth: 1.5)
+                            )
+                            .shadow(color: .black.opacity(0.5), radius: 30)
+                    )
                 }
             }
         }
@@ -152,6 +80,227 @@ struct HomeView: View {
             guard let item else { return }
             Task { await handlePickedMedia(item) }
         }
+        .onAppear {
+            startShimmerAnimation()
+        }
+    }
+    
+    // MARK: - Hero Section
+    private var heroSection: some View {
+        VStack(spacing: 16) {
+            // Animated Logo Container
+            ZStack {
+                // Glow rings
+                Circle()
+                    .stroke(NaturePalette.goldRing.opacity(0.15), lineWidth: 2)
+                    .frame(width: 140, height: 140)
+                Circle()
+                    .stroke(NaturePalette.rosegold.opacity(0.12), lineWidth: 2)
+                    .frame(width: 160, height: 160)
+                
+                // Main logo card
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                NaturePalette.canopy.opacity(0.95),
+                                NaturePalette.deepForest.opacity(0.98)
+                            ],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 80
+                        )
+                    )
+                    .frame(width: 110, height: 110)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .stroke(NaturePalette.heroGradient, lineWidth: 2)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.4),
+                                        Color.white.opacity(0.0)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                            .padding(2)
+                    )
+                    .shadow(color: Color.black.opacity(0.6), radius: 20, y: 10)
+                    .shadow(color: NaturePalette.goldRing.opacity(0.4), radius: 30, y: 0)
+                
+                Image(systemName: "square.grid.3x3.fill")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(NaturePalette.heroGradient)
+                    .shadow(color: NaturePalette.champagne.opacity(0.6), radius: 12)
+            }
+            
+            // Brand badge
+            Text("DUNA")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .kerning(4)
+                .foregroundStyle(NaturePalette.pearl)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    NaturePalette.obsidian.opacity(0.9),
+                                    NaturePalette.bark.opacity(0.95)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(NaturePalette.goldRing.opacity(0.6), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                )
+            
+            // Title
+            Text(String(localized: "splash_title"))
+                .font(.system(size: 36, weight: .black, design: .rounded))
+                .tracking(0.5)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [NaturePalette.pearl, NaturePalette.champagne, NaturePalette.rosegold],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: NaturePalette.goldRing.opacity(0.5), radius: 20, y: 4)
+                .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
+            
+            // Tagline
+            Text(String(localized: "splash_tagline"))
+                .font(.callout.weight(.medium))
+                .foregroundStyle(NaturePalette.champagne.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+    }
+    
+    // MARK: - Progress Card
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(NaturePalette.emerald)
+                Text(String(localized: "home_progress_label"))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NaturePalette.cream.opacity(0.9))
+                    .textCase(.uppercase)
+                    .kerning(1)
+                Spacer()
+                Text("\(currentId)/10")
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(NaturePalette.goldRing)
+            }
+            
+            Divider()
+                .overlay(NaturePalette.luxuryStrokeGradient.opacity(0.3))
+            
+            Text(String(localized: String.LocalizationValue(currentLevel.titleKey)))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(NaturePalette.pearl)
+                .lineLimit(2)
+            
+            Text(String(localized: String.LocalizationValue(currentLevel.subtitleKey)))
+                .font(.caption)
+                .foregroundStyle(NaturePalette.cream.opacity(0.65))
+                .lineLimit(3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(NaturePalette.premiumCardBackground)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial.opacity(0.3))
+                LuxuryGlassPanel(
+                    shape: RoundedRectangle(cornerRadius: 24, style: .continuous),
+                    lineWidth: 1.5
+                )
+            }
+        )
+        .overlay(
+            GeometryReader { geo in
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(NaturePalette.accentShimmer)
+                    .frame(width: 100)
+                    .offset(x: shimmerOffset)
+                    .mask(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    )
+            }
+            .allowsHitTesting(false)
+        )
+        .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+        .shadow(color: NaturePalette.goldRing.opacity(0.2), radius: 24)
+    }
+    
+    // MARK: - Action Cards Grid
+    private var actionCardsGrid: some View {
+        VStack(spacing: 14) {
+            // Primary action - Play Now
+            ActionCard(
+                icon: "play.fill",
+                title: String(localized: "home_play_now"),
+                gradient: NaturePalette.heroGradient,
+                isPrimary: true
+            ) {
+                HapticsService.playMenuTap()
+                onPlayCurrent()
+            }
+            
+            HStack(spacing: 14) {
+                // Level Menu
+                ActionCard(
+                    icon: "map.fill",
+                    title: String(localized: "home_level_menu"),
+                    gradient: LinearGradient(
+                        colors: [NaturePalette.emerald, NaturePalette.leaf],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    isPrimary: false
+                ) {
+                    HapticsService.playMenuTap()
+                    onOpenLevelMenu()
+                }
+                
+                // Media Picker
+                PhotosPicker(
+                    selection: $photoPickerItem,
+                    matching: .any(of: [.images, .videos]),
+                    photoLibrary: .shared()
+                ) {
+                    ActionCardContent(
+                        icon: "photo.on.rectangle.angled",
+                        title: String(localized: "home_pick_media"),
+                        gradient: LinearGradient(
+                            colors: [NaturePalette.sapphire, NaturePalette.dew],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        isPrimary: false
+                    )
+                }
+                .disabled(isPreparingUserMedia)
+            }
+        }
     }
 
     @MainActor
@@ -169,33 +318,129 @@ struct HomeView: View {
             userMediaError = error.localizedDescription
         }
     }
-
-    private var progressCapsule: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "leaf.fill")
-                    .foregroundStyle(NaturePalette.leaf)
-                Text(String(localized: "home_progress_label"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(NaturePalette.cream.opacity(0.85))
-            }
-            Text(String(localized: String.LocalizationValue(currentLevel.titleKey)))
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(NaturePalette.sunlight)
-                .lineLimit(2)
-            Text(String(localized: String.LocalizationValue(currentLevel.subtitleKey)))
-                .font(.caption2)
-                .foregroundStyle(NaturePalette.cream.opacity(0.55))
-                .lineLimit(3)
+    
+    private func startShimmerAnimation() {
+        withAnimation(
+            .linear(duration: 3)
+            .repeatForever(autoreverses: false)
+        ) {
+            shimmerOffset = UIScreen.main.bounds.width + 200
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+    }
+}
+
+// MARK: - Action Card Component
+struct ActionCard: View {
+    let icon: String
+    let title: String
+    let gradient: LinearGradient
+    let isPrimary: Bool
+    let action: () -> Void
+    
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button(action: {
+            action()
+        }) {
+            ActionCardContent(
+                icon: icon,
+                title: title,
+                gradient: gradient,
+                isPrimary: isPrimary
+            )
+        }
+        .buttonStyle(ActionCardButtonStyle(isPrimary: isPrimary))
+    }
+}
+
+struct ActionCardContent: View {
+    let icon: String
+    let title: String
+    let gradient: LinearGradient
+    let isPrimary: Bool
+    
+    var body: some View {
+        VStack(spacing: isPrimary ? 12 : 10) {
+            ZStack {
+                Circle()
+                    .fill(gradient.opacity(0.2))
+                    .frame(width: isPrimary ? 70 : 56, height: isPrimary ? 70 : 56)
+                
+                Image(systemName: icon)
+                    .font(.system(size: isPrimary ? 32 : 24, weight: .semibold))
+                    .foregroundStyle(gradient)
+                    .shadow(color: .white.opacity(0.3), radius: 8)
+            }
+            
+            Text(title)
+                .font(isPrimary ? .headline.weight(.bold) : .subheadline.weight(.semibold))
+                .foregroundStyle(NaturePalette.pearl)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, isPrimary ? 24 : 20)
+        .padding(.horizontal, 16)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.black.opacity(0.2))
-                LuxuryGlassPanel(shape: RoundedRectangle(cornerRadius: 22, style: .continuous), lineWidth: 1.1)
+                if isPrimary {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(NaturePalette.premiumCardBackground)
+                } else {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    NaturePalette.obsidian.opacity(0.7),
+                                    NaturePalette.deepForest.opacity(0.6)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.ultraThinMaterial.opacity(0.25))
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(gradient.opacity(isPrimary ? 1.0 : 0.6), lineWidth: isPrimary ? 2 : 1.5)
+                if isPrimary {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.0)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                        .padding(1.5)
+                }
             }
+        )
+        .shadow(
+            color: .black.opacity(isPrimary ? 0.5 : 0.35),
+            radius: isPrimary ? 20 : 12,
+            y: isPrimary ? 10 : 6
+        )
+        .shadow(
+            color: isPrimary ? NaturePalette.goldRing.opacity(0.3) : Color.clear,
+            radius: 24
         )
     }
 }
+
+struct ActionCardButtonStyle: ButtonStyle {
+    let isPrimary: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+

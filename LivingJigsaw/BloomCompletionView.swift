@@ -145,9 +145,9 @@ private struct BloomShimmerTitle: View {
     var body: some View {
         if reduceMotion {
             Text(text)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 38, weight: .heavy, design: .rounded))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(NaturePalette.titleLuxuryGradient)
+                .foregroundStyle(NaturePalette.heroGradient)
                 .shadow(color: NaturePalette.goldRing.opacity(0.35), radius: 18, y: 2)
                 .padding(.horizontal, 18)
         } else {
@@ -155,20 +155,21 @@ private struct BloomShimmerTitle: View {
                 let t = timeline.date.timeIntervalSinceReferenceDate
                 let sweep = (t.truncatingRemainder(dividingBy: 3.2)) / 3.2
                 Text(text)
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(NaturePalette.titleLuxuryGradient)
-                    .shadow(color: NaturePalette.goldRing.opacity(0.35), radius: 18, y: 2)
+                    .foregroundStyle(NaturePalette.heroGradient)
+                    .shadow(color: NaturePalette.goldRing.opacity(0.5), radius: 22, y: 3)
+                    .shadow(color: .black.opacity(0.6), radius: 12, y: 2)
                     .overlay {
                         GeometryReader { geo in
                             let w = geo.size.width
-                            let bandW = max(80, w * 0.42)
+                            let bandW = max(90, w * 0.45)
                             LinearGradient(
                                 colors: [
                                     Color.clear,
-                                    NaturePalette.champagne.opacity(0.95),
-                                    Color.white.opacity(0.55),
-                                    NaturePalette.goldRing.opacity(0.85),
+                                    NaturePalette.pearl.opacity(0.95),
+                                    Color.white.opacity(0.75),
+                                    NaturePalette.rosegold.opacity(0.9),
                                     Color.clear
                                 ],
                                 startPoint: .leading,
@@ -180,7 +181,7 @@ private struct BloomShimmerTitle: View {
                         }
                         .mask(
                             Text(text)
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .font(.system(size: 38, weight: .heavy, design: .rounded))
                                 .multilineTextAlignment(.center)
                         )
                     }
