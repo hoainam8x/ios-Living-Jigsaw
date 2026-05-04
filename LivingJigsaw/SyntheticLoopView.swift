@@ -46,6 +46,7 @@ struct SyntheticLoopView: View {
             context.fill(Path(ellipseIn: orb), with: .color(hi.opacity(0.45)))
             context.stroke(Path(ellipseIn: orb.insetBy(dx: -2, dy: -2)), with: .color(accent.opacity(0.55)), lineWidth: 1.2)
         }
+        .allowsHitTesting(false)
         .drawingGroup(opaque: false, colorMode: .linear)
     }
 }

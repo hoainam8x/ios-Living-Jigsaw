@@ -55,6 +55,7 @@ struct LivingPieceCell: View {
                     .shadow(color: isPlaced ? NaturePalette.goldRing.opacity(bloomPulse ? 0.9 : 0.5) : .clear, radius: isPlaced ? 16 : 0)
             }
         }
+        .allowsHitTesting(false)
         .brightness(bloomPulse ? 0.22 : 0)
         .animation(.easeOut(duration: 0.35), value: bloomPulse)
     }

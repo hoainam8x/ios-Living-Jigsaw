@@ -38,10 +38,10 @@ struct GameplayView: View {
     @State private var didFireLevelComplete = false
     /// Rung khi **vừa đi vào** vùng gần ô đúng (cạnh bắt CoreHaptics).
     @State private var hotSnapPieces: Set<Int> = []
-    /// Long‑press đủ lâu → cho phép kéo (giữ rồi di chuyển).
-    @State private var moveArmedByHold: Set<Int> = []
     /// Đã thực sự kéo dịch mảnh trong gesture hiện tại.
     @State private var dragDidMovePiece: Set<Int> = []
+    /// Tránh `playTactileAtPan` mỗi frame (stop/schedule buffer) — gây giật chính luồng + audio.
+    @State private var dragTactileBucket: Int = -1
     /// Sau intro ném mảnh — mới cho kéo / xoay.
     @State private var pieceGestureReady = false
     @State private var introThrowTask: Task<Void, Never>?
@@ -54,37 +54,14 @@ struct GameplayView: View {
     var body: some View {
         ZStack {
             NatureBackground(variant: .gameplayDim)
-                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .ignoresSafeArea()
             Color.black.opacity(0.45)
-                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .ignoresSafeArea()
 
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                GeometryReader { geo in
-                    let layout = boardLayout(for: geo, cols: cols, rows: rows)
-                    content(layout: layout, globalTime: t, geo: geo)
-                        .onAppear {
-                            HapticsService.prepare()
-                            coordinator.load(level: level)
-                            coordinator.play()
-                            if coordinator.puzzleBoardMetricsReady {
-                                bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
-                            }
-                        }
-                        .onChange(of: coordinator.puzzleBoardMetricsReady) { _, ready in
-                            guard ready else { return }
-                            bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
-                        }
-                        .onDisappear {
-                            admireAutoCompleteTask?.cancel()
-                            admireAutoCompleteTask = nil
-                            introThrowTask?.cancel()
-                            introThrowTask = nil
-                            coordinator.pause()
-                        }
-                }
-            }
+            gameplayGeometry()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(edges: [.top, .bottom])
         .background(NaturePalette.deepForest.opacity(0.92).ignoresSafeArea(edges: .top))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(NaturePalette.deepForest.opacity(0.92), for: .navigationBar)
@@ -122,8 +99,72 @@ struct GameplayView: View {
     @State private var lastLayoutSnapshot: BoardLayout?
 
     @ViewBuilder
+    private func gameplayGeometry() -> some View {
+        GeometryReader { geo in
+            let layout = boardLayout(for: geo, cols: cols, rows: rows)
+            Group {
+                if coordinator.isUsingSyntheticFallback {
+                    TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { timeline in
+                        let t = timeline.date.timeIntervalSinceReferenceDate
+                        content(layout: layout, globalTime: t, geo: geo)
+                    }
+                } else {
+                    content(layout: layout, globalTime: 0, geo: geo)
+                }
+            }
+            .onAppear {
+                HapticsService.prepare()
+                coordinator.load(level: level)
+                coordinator.play()
+                if coordinator.puzzleBoardMetricsReady {
+                    bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
+                }
+            }
+            .onChange(of: coordinator.puzzleBoardMetricsReady) { _, ready in
+                guard ready else { return }
+                bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
+            }
+            .onDisappear {
+                admireAutoCompleteTask?.cancel()
+                admireAutoCompleteTask = nil
+                introThrowTask?.cancel()
+                introThrowTask = nil
+                coordinator.pause()
+            }
+        }
+        // Mở rộng chiều cao đo được (tránh GeometryReader trong Navigation chỉ = vùng dưới nav → spawn bị “thấp”).
+        .ignoresSafeArea(edges: [.top, .bottom])
+    }
+
+    @ViewBuilder
     private func content(layout: BoardLayout, globalTime: TimeInterval, geo: GeometryProxy) -> some View {
         ZStack {
+            // Hint vẽ trước → mảnh intro bay **lên trên** chữ (giống màn mẫu văng tung toé).
+            if !admirePhaseActive {
+                VStack(spacing: 0) {
+                    Text(String(localized: "gameplay_calm"))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(NaturePalette.cream.opacity(0.88))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityHint(Text(String(localized: "gameplay_audio_hint")))
+                        .background(
+                            ZStack {
+                                Capsule().fill(Color.black.opacity(0.22))
+                                LuxuryGlassPanel(shape: Capsule(), lineWidth: 0.85)
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    Spacer(minLength: 0)
+                }
+                .allowsHitTesting(false)
+                .transition(.opacity)
+                .zIndex(2)
+            }
+
             ZStack {
                 boardMediaUnderlay(
                     layout: layout,
@@ -150,7 +191,7 @@ struct GameplayView: View {
 
                 if hasBootstrapped {
                     Group {
-                        ForEach(pieces.filter { !$0.isPlaced }) { piece in
+                        ForEach(pieces.filter { !$0.isPlaced }.sorted(by: { $0.id < $1.id })) { piece in
                             let c = centers[piece.id] ?? layout.boardMidpoint
                             let g = admirePhaseActive ? false : glowActive(for: piece.id)
                             unplacedPieceNode(
@@ -167,39 +208,26 @@ struct GameplayView: View {
             }
             .frame(width: layout.playfieldWidth, height: layout.playfieldHeight)
             .ignoresSafeArea(edges: [.horizontal, .bottom])
-
-            if !admirePhaseActive {
-                VStack(spacing: 0) {
-                    Text(String(localized: "gameplay_calm"))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(NaturePalette.cream.opacity(0.88))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityHint(Text(String(localized: "gameplay_audio_hint")))
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color.black.opacity(0.22))
-                                LuxuryGlassPanel(shape: Capsule(), lineWidth: 0.85)
-                            }
-                        )
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                    Spacer(minLength: 0)
-                }
-                .allowsHitTesting(false)
-                .transition(.opacity)
-            }
+            .zIndex(8)
 
             if !admirePhaseActive {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
                         .allowsHitTesting(false)
-                    GameplayAdBannerSlot()
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 12)
+                    HStack(spacing: 0) {
+                        Color.clear
+                            .frame(maxWidth: .infinity, maxHeight: 50)
+                            .allowsHitTesting(false)
+                        GameplayAdBannerSlot()
+                        Color.clear
+                            .frame(maxWidth: .infinity, maxHeight: 50)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(height: 50)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
                 }
+                .zIndex(40)
             }
         }
         .frame(width: geo.size.width, height: geo.size.height)
@@ -208,17 +236,29 @@ struct GameplayView: View {
         .onChange(of: geo.size) { _, _ in
             let next = boardLayout(for: geo, cols: cols, rows: rows)
             lastLayoutSnapshot = next
-            reclampUnplacedCenters(layout: next)
+            if !hasBootstrapped, coordinator.puzzleBoardMetricsReady {
+                bootstrapIfNeeded(layout: next, playfieldWidth: next.playfieldWidth)
+            } else {
+                reclampUnplacedCenters(layout: next)
+            }
         }
         .onChange(of: coordinator.videoDisplayAspectRatio) { _, _ in
             let next = boardLayout(for: geo, cols: cols, rows: rows)
             lastLayoutSnapshot = next
-            reclampUnplacedCenters(layout: next)
+            if !hasBootstrapped, coordinator.puzzleBoardMetricsReady {
+                bootstrapIfNeeded(layout: next, playfieldWidth: next.playfieldWidth)
+            } else {
+                reclampUnplacedCenters(layout: next)
+            }
         }
         .onChange(of: coordinator.isUsingSyntheticFallback) { _, _ in
             let next = boardLayout(for: geo, cols: cols, rows: rows)
             lastLayoutSnapshot = next
-            reclampUnplacedCenters(layout: next)
+            if !hasBootstrapped, coordinator.puzzleBoardMetricsReady {
+                bootstrapIfNeeded(layout: next, playfieldWidth: next.playfieldWidth)
+            } else {
+                reclampUnplacedCenters(layout: next)
+            }
         }
         .onChange(of: pieces) { _, new in
             guard new.allSatisfy(\.isPlaced), !admirePhaseActive else { return }
@@ -302,6 +342,9 @@ struct GameplayView: View {
     ) -> some View {
         let dragging = activelyDraggedPieceId == piece.id
         let introS = introSpawnScale(for: piece.id)
+        let ph = max(1, layout.playfieldHeight)
+        let pw = max(1, layout.playfieldWidth)
+        let stackLayer = Double(center.y / ph) * 8 + Double(center.x / pw) * 0.08 + Double(piece.id) * 1e-4
         let base = pieceView(
             piece: piece,
             center: center,
@@ -314,16 +357,9 @@ struct GameplayView: View {
             .opacity(introOpacity(for: piece.id))
             .scaleEffect(introS * (dragging ? 1.06 : 1.0))
             .shadow(color: dragging ? Color.black.opacity(0.4) : .clear, radius: dragging ? 20 : 0, y: dragging ? 8 : 0)
-            .animation(.spring(response: 0.24, dampingFraction: 0.82), value: dragging)
-            .zIndex(dragging ? 80 : 32 + Double(piece.id))
+            .zIndex(dragging ? 100 : 40 + stackLayer)
         if pieceGestureReady {
             base
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: level.gameplayLongPressArmSeconds, maximumDistance: 22)
-                        .onEnded { _ in
-                            moveArmedByHold.insert(piece.id)
-                        }
-                )
                 .gesture(pieceDragGesture(for: piece, layout: layout, geoWidth: geoWidth))
         } else {
             base
@@ -366,6 +402,7 @@ struct GameplayView: View {
         )
         .frame(width: size.width, height: size.height)
         .rotationEffect(piece.rotationAngle + .degrees(introExtraDegrees))
+        .contentShape(JigsawPieceShape(edges: edges))
         .animation(.spring(response: 0.45, dampingFraction: 0.76), value: piece.rotationQuarterTurns)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(accessibilityCombinedLabel(for: piece)))
@@ -374,20 +411,19 @@ struct GameplayView: View {
     }
 
     private func pieceDragGesture(for piece: DraggablePiece, layout: BoardLayout, geoWidth: CGFloat) -> some Gesture {
-        let slop: CGFloat = 14
+        let slop: CGFloat = 6
         return DragGesture(minimumDistance: 0)
             .onChanged { value in
                 if dragStartCenters[piece.id] == nil {
                     dragStartCenters[piece.id] = centers[piece.id] ?? layout.boardMidpoint
                 }
-                let arm = moveArmedByHold.contains(piece.id)
                 let beyondSlop = hypot(value.translation.width, value.translation.height) > slop
-                guard arm || beyondSlop else { return }
+                guard beyondSlop else { return }
                 let start = dragStartCenters[piece.id] ?? layout.boardMidpoint
                 let next = CGPoint(x: start.x + value.translation.width, y: start.y + value.translation.height)
                 let clamped = layout.clampedUnplacedCenter(next)
                 var tx = Transaction()
-                tx.animation = .interactiveSpring(response: 0.11, dampingFraction: 0.92)
+                tx.animation = nil
                 withTransaction(tx) {
                     centers[piece.id] = clamped
                 }
@@ -395,18 +431,21 @@ struct GameplayView: View {
                 dragDidMovePiece.insert(piece.id)
                 proximityHaptics(for: piece, at: clamped, layout: layout)
                 let nx = max(0, min(1, next.x / max(1, geoWidth)))
-                spatial.playTactileAtPan(normalizedX: nx)
+                let bucket = Int(nx * 10)
+                if bucket != dragTactileBucket {
+                    dragTactileBucket = bucket
+                    spatial.playTactileAtPan(normalizedX: nx)
+                }
             }
             .onEnded { value in
                 activelyDraggedPieceId = nil
-                let wasArmed = moveArmedByHold.contains(piece.id)
-                moveArmedByHold.remove(piece.id)
+                dragTactileBucket = -1
                 let didDrag = dragDidMovePiece.contains(piece.id)
                 dragDidMovePiece.remove(piece.id)
                 let start = dragStartCenters[piece.id] ?? layout.boardMidpoint
                 dragStartCenters[piece.id] = nil
                 let tapLike = hypot(value.translation.width, value.translation.height) < slop
-                if !didDrag, !wasArmed, tapLike {
+                if !didDrag, tapLike {
                     rotatePiece(id: piece.id)
                     return
                 }
@@ -496,6 +535,8 @@ struct GameplayView: View {
 
     private func bootstrapIfNeeded(layout: BoardLayout, playfieldWidth: CGFloat) {
         guard !hasBootstrapped else { return }
+        // Tránh frame SwiftUI lần đầu = 0 / quá thấp → spawn rơi vào `boardMidpoint` (cụm giữa màn).
+        guard layout.playfieldHeight >= 160, layout.playfieldWidth >= 160 else { return }
         hasBootstrapped = true
         pieceGestureReady = false
         lastLayoutSnapshot = layout
@@ -525,35 +566,64 @@ struct GameplayView: View {
 
         let w = fieldW
         let h = layout.playfieldHeight
-        let inset = layout.pieceExtentInset
+        /// Intro mảnh thu nhỏ — inset ngang giữ mép; inset dọc nhỏ hơn để tận dụng gần full chiều cao màn.
+        let spawnInsetX = max(5, layout.pieceExtentInset * 0.09)
+        let spawnInsetY = max(2, layout.pieceExtentInset * 0.03)
+        let minX = spawnInsetX
+        let maxX = w - spawnInsetX
+        let minY = spawnInsetY
+        let maxY = h - spawnInsetY
+        let n = slotForPiece.count
         var spawns: [Int: CGPoint] = [:]
-        for pieceId in 0..<slotForPiece.count {
-            let minX = inset
-            let maxX = w - inset
-            let minY = inset
-            let maxY = h - inset
-            guard minX < maxX, minY < maxY else {
-                spawns[pieceId] = layout.boardMidpoint
-                continue
+        /// Video rộng → bàn là dải ngang mỏng; random đều toàn màn vẫn hay rơi **trên** bàn. Ưu tiên dải trên/dưới `boardRect` để mảnh nằm nền đen rồi mới bay vào ô.
+        func introScatterPoint() -> CGPoint {
+            let x = CGFloat.random(in: minX...maxX)
+            let boardTop = layout.boardOrigin.y
+            let boardBot = layout.boardOrigin.y + layout.boardSize.height
+            let margin = max(6, layout.pieceExtentInset * 0.1)
+            let topBandMax = min(maxY, boardTop - margin)
+            let botBandMin = max(minY, boardBot + margin)
+            let topBandHi = max(0, topBandMax - minY)
+            let botBandHi = max(0, maxY - botBandMin)
+            if topBandHi + botBandHi > 44, Double.random(in: 0...1) < 0.9 {
+                if topBandHi > 22, botBandHi > 22 {
+                    let y = Bool.random()
+                        ? CGFloat.random(in: minY...topBandMax)
+                        : CGFloat.random(in: botBandMin...maxY)
+                    return CGPoint(x: x, y: y)
+                }
+                if topBandHi > 22 {
+                    return CGPoint(x: x, y: CGFloat.random(in: minY...topBandMax))
+                }
+                if botBandHi > 22 {
+                    return CGPoint(x: x, y: CGFloat.random(in: botBandMin...maxY))
+                }
             }
-            spawns[pieceId] = CGPoint(
-                x: CGFloat.random(in: minX...maxX),
-                y: CGFloat.random(in: minY...maxY)
-            )
+            return CGPoint(x: x, y: CGFloat.random(in: minY...maxY))
+        }
+        if minX < maxX, minY < maxY, n > 0 {
+            for pid in 0..<n {
+                spawns[pid] = introScatterPoint()
+            }
+        } else {
+            for pid in 0..<max(n, 0) {
+                spawns[pid] = layout.boardMidpoint
+            }
         }
         centers = spawns
         var seedScale: [Int: CGFloat] = [:]
         var seedTilt: [Int: Double] = [:]
         for p in pieces {
-            seedScale[p.id] = CGFloat.random(in: 0.07...0.16)
-            seedTilt[p.id] = Double.random(in: -34...34)
+            seedScale[p.id] = CGFloat.random(in: 0.05...0.24)
+            seedTilt[p.id] = Double.random(in: 0.0...360.0)
         }
         introPieceScale = seedScale
         introTiltDegrees = seedTilt
 
         introThrowTask?.cancel()
         introThrowTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 280_000_000)
+            // Giữ scatter đủ lâu — trước đây ~280ms rồi bay vào dải ô nên màn nhìn như “chỉ cụm theo bàn”.
+            try? await Task.sleep(nanoseconds: 1_050_000_000)
             guard !Task.isCancelled else { return }
             let ordered = pieces.map(\.id).shuffled()
             for (i, pid) in ordered.enumerated() {
@@ -702,6 +772,7 @@ struct GameplayView: View {
             playfieldHeight: playfieldHeight
         )
     }
+
 }
 
 private struct VideoBoardUnderlayRepresentable: UIViewRepresentable {

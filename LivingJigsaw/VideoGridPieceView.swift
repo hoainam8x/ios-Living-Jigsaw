@@ -16,6 +16,7 @@ final class VideoGridPieceUIView: UIView {
         self.cols = cols
         self.rows = rows
         super.init(frame: .zero)
+        isUserInteractionEnabled = false
         isOpaque = false
         clipsToBounds = false
         backgroundColor = .clear

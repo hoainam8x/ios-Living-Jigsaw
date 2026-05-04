@@ -84,9 +84,6 @@ struct LevelDefinition: Hashable, Identifiable {
 
     /// Bán kính snap (pt).
     var gameplaySnapRadius: CGFloat { max(30, 72 - combinedDifficulty * 34) }
-
-    /// Giữ lâu hơn mới kích hoạt kéo.
-    var gameplayLongPressArmSeconds: Double { 0.18 + Double(combinedDifficulty) * 0.19 }
 }
 
 private extension SyntheticPalette {
