@@ -53,5 +53,7 @@
 	<string>$(ADMOB_BANNER_UNIT_ID)</string>
 	<key>AdMobInterstitialUnitID</key>
 	<string>$(ADMOB_INTERSTITIAL_UNIT_ID)</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo or video to play as a custom puzzle.</string>
 </dict>
 </plist>

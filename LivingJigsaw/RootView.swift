@@ -4,8 +4,9 @@ struct RootView: View {
     enum Phase: Hashable {
         case home
         case levelMenu
-        case play(LevelDefinition)
-        case bloom(LevelDefinition)
+        /// `userLibraryVideoURL`: file temp từ ảnh thư viện / video đã chọn.
+        case play(level: LevelDefinition, userLibraryVideoURL: URL?)
+        case bloom(level: LevelDefinition, advanceProgress: Bool)
     }
 
     @State private var phase: Phase = .home
@@ -16,21 +17,25 @@ struct RootView: View {
             switch phase {
             case .home:
                 HomeView(
-                    onPlayCurrent: { phase = .play(.level(GameProgress.currentLevelId)) },
-                    onOpenLevelMenu: { phase = .levelMenu }
+                    onPlayCurrent: { phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: nil) },
+                    onOpenLevelMenu: { phase = .levelMenu },
+                    onPlayUserPickedVideo: { url in
+                        phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: url)
+                    }
                 )
             case .levelMenu:
                 LevelMenuView(
                     onPickLevel: { level in
-                        phase = .play(level)
+                        phase = .play(level: level, userLibraryVideoURL: nil)
                     },
                     onClose: { phase = .home }
                 )
-            case .play(let level):
+            case .play(let level, let userLibraryVideoURL):
                 NavigationStack {
                     GameplayView(
                         level: level,
-                        onComplete: { phase = .bloom(level) },
+                        userPickedLibraryVideoURL: userLibraryVideoURL,
+                        onComplete: { phase = .bloom(level: level, advanceProgress: userLibraryVideoURL == nil) },
                         onLeave: { phase = .home }
                     )
                     .environmentObject(gameAudio)
@@ -39,9 +44,11 @@ struct RootView: View {
                     .toolbarColorScheme(.dark, for: .navigationBar)
                     .tint(NaturePalette.sunlight)
                 }
-            case .bloom(let level):
+            case .bloom(let level, let advanceProgress):
                 BloomCompletionView(level: level) {
-                    GameProgress.markCompleted(levelId: level.id)
+                    if advanceProgress {
+                        GameProgress.markCompleted(levelId: level.id)
+                    }
                     phase = .home
                 }
                 .environmentObject(gameAudio)

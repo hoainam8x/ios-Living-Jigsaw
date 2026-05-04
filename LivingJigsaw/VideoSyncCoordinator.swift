@@ -21,12 +21,18 @@ final class VideoSyncCoordinator: ObservableObject {
 
     init() {}
 
-    func load(level: LevelDefinition) {
+    func load(level: LevelDefinition, userPickedLibraryVideoURL: URL? = nil) {
         tearDown()
         isUsingSyntheticFallback = true
         player = nil
         videoDisplayAspectRatio = nil
         puzzleBoardMetricsReady = false
+
+        if let u = userPickedLibraryVideoURL {
+            jigsaw.refreshDiscoveredVideos()
+            startJigsawEngine(url: u)
+            return
+        }
 
         jigsaw.refreshDiscoveredVideos()
         if let url = jigsaw.resolvedURL(forLevelId: level.id) {

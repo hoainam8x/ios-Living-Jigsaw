@@ -53,6 +53,12 @@
 /* Home & levels */
 "home_play_now" = "Play now";
 "home_level_menu" = "Levels";
+"home_pick_media" = "Photo or video";
+"home_pick_media_preparing" = "Preparing…";
+"home_pick_media_failed_title" = "Could not open";
+"home_pick_media_failed" = "Something went wrong while importing this file.";
+"home_pick_media_unsupported" = "This format isn’t supported. Try another photo or video.";
+"home_pick_media_ok" = "OK";
 "home_close_menu" = "Close";
 "home_back" = "Home";
 "home_progress_label" = "Continue your path";

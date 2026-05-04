@@ -4,6 +4,8 @@ import UIKit
 
 struct GameplayView: View {
     let level: LevelDefinition
+    /// Video/ảnh đã xuất ra file temp từ thư viện — `nil` = dùng video bundle theo level.
+    var userPickedLibraryVideoURL: URL?
     var onComplete: () -> Void
     var onLeave: () -> Void
 
@@ -18,8 +20,9 @@ struct GameplayView: View {
     private var cols: Int { level.puzzleColumns }
     private var rows: Int { level.puzzleRows }
 
-    init(level: LevelDefinition, onComplete: @escaping () -> Void, onLeave: @escaping () -> Void) {
+    init(level: LevelDefinition, userPickedLibraryVideoURL: URL? = nil, onComplete: @escaping () -> Void, onLeave: @escaping () -> Void) {
         self.level = level
+        self.userPickedLibraryVideoURL = userPickedLibraryVideoURL
         self.onComplete = onComplete
         self.onLeave = onLeave
         let n = level.puzzleColumns * level.puzzleRows
@@ -114,7 +117,7 @@ struct GameplayView: View {
             }
             .onAppear {
                 HapticsService.prepare()
-                coordinator.load(level: level)
+                coordinator.load(level: level, userPickedLibraryVideoURL: userPickedLibraryVideoURL)
                 coordinator.play()
                 if coordinator.puzzleBoardMetricsReady {
                     bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)

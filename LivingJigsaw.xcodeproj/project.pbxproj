@@ -37,6 +37,7 @@
 		A10000000000000000000021 /* LevelMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000025 /* LevelMenuView.swift */; };
 		A10000000000000000000026 /* NatureChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000026 /* NatureChrome.swift */; };
 		A10000000000000000000027 /* AdMobAnchoredBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000027 /* AdMobAnchoredBannerView.swift */; };
+		A10000000000000000000028 /* LibraryPickedMediaExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000028 /* LibraryPickedMediaExporter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 		B10000000000000000000025 /* LevelMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMenuView.swift; sourceTree = "<group>"; };
 		B10000000000000000000026 /* NatureChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NatureChrome.swift; sourceTree = "<group>"; };
 		B10000000000000000000027 /* AdMobAnchoredBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobAnchoredBannerView.swift; sourceTree = "<group>"; };
+		B10000000000000000000028 /* LibraryPickedMediaExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryPickedMediaExporter.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* VideoJigsawManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoJigsawManager.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* Video */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Video; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 				B10000000000000000000011 /* VocalAIService.swift */,
 				B10000000000000000000013 /* AdManager.swift */,
 				B10000000000000000000027 /* AdMobAnchoredBannerView.swift */,
+				B10000000000000000000028 /* LibraryPickedMediaExporter.swift */,
 				B10000000000000000000014 /* AccessibilityBannerSlot.swift */,
 				B10000000000000000000015 /* Assets.xcassets */,
 				B10000000000000000000017 /* Info.plist */,
@@ -247,6 +250,7 @@
 				A10000000000000000000011 /* VocalAIService.swift in Sources */,
 				A10000000000000000000013 /* AdManager.swift in Sources */,
 				A10000000000000000000027 /* AdMobAnchoredBannerView.swift in Sources */,
+				A10000000000000000000028 /* LibraryPickedMediaExporter.swift in Sources */,
 				A10000000000000000000014 /* AccessibilityBannerSlot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

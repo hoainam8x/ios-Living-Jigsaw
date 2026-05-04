@@ -1,8 +1,14 @@
+import PhotosUI
 import SwiftUI
 
 struct HomeView: View {
     var onPlayCurrent: () -> Void
     var onOpenLevelMenu: () -> Void
+    var onPlayUserPickedVideo: (URL) -> Void
+
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var isPreparingUserMedia = false
+    @State private var userMediaError: String?
 
     private var currentId: Int { GameProgress.currentLevelId }
     private var currentLevel: LevelDefinition { .level(currentId) }
@@ -99,6 +105,19 @@ struct HomeView: View {
                         }
                     }
                     .buttonStyle(NatureSecondaryButtonStyle())
+
+                    PhotosPicker(
+                        selection: $photoPickerItem,
+                        matching: .any(of: [.images, .videos]),
+                        photoLibrary: .shared()
+                    ) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.on.rectangle.angled")
+                            Text(String(localized: "home_pick_media"))
+                        }
+                    }
+                    .buttonStyle(NatureSecondaryButtonStyle())
+                    .disabled(isPreparingUserMedia)
                 }
                 .padding(.horizontal, 22)
                 .padding(.bottom, 28)
@@ -108,6 +127,47 @@ struct HomeView: View {
             }
         }
         .foregroundStyle(NaturePalette.cream)
+        .overlay {
+            if isPreparingUserMedia {
+                ZStack {
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    ProgressView(String(localized: "home_pick_media_preparing"))
+                        .padding(20)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+        }
+        .alert(
+            String(localized: "home_pick_media_failed_title"),
+            isPresented: Binding(
+                get: { userMediaError != nil },
+                set: { if !$0 { userMediaError = nil } }
+            )
+        ) {
+            Button(String(localized: "home_pick_media_ok")) { userMediaError = nil }
+        } message: {
+            Text(userMediaError ?? "")
+        }
+        .onChange(of: photoPickerItem) { _, item in
+            guard let item else { return }
+            Task { await handlePickedMedia(item) }
+        }
+    }
+
+    @MainActor
+    private func handlePickedMedia(_ item: PhotosPickerItem) async {
+        isPreparingUserMedia = true
+        defer {
+            isPreparingUserMedia = false
+            photoPickerItem = nil
+        }
+        do {
+            let url = try await LibraryPickedMediaExporter.exportToTempVideoURL(from: item)
+            HapticsService.playMenuTap()
+            onPlayUserPickedVideo(url)
+        } catch {
+            userMediaError = error.localizedDescription
+        }
     }
 
     private var progressCapsule: some View {

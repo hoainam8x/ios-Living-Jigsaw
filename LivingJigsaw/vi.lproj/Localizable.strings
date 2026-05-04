@@ -43,6 +43,12 @@
 
 "home_play_now" = "Chơi ngay";
 "home_level_menu" = "Chọn level";
+"home_pick_media" = "Ảnh hoặc video";
+"home_pick_media_preparing" = "Đang chuẩn bị…";
+"home_pick_media_failed_title" = "Không mở được";
+"home_pick_media_failed" = "Có lỗi khi nhập file này.";
+"home_pick_media_unsupported" = "Định dạng không hỗ trợ. Thử ảnh hoặc video khác.";
+"home_pick_media_ok" = "Đóng";
 "home_close_menu" = "Đóng";
 "home_back" = "Trang chủ";
 "home_progress_label" = "Tiếp tục hành trình";
