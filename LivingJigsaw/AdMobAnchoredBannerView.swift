@@ -51,16 +51,70 @@ private struct AdMobAnchoredBannerRepresentable: UIViewRepresentable {
     }
 }
 
-/// Vùng đáy gameplay: banner thật hoặc placeholder khi chưa có unit ID.
+/// Vùng đáy gameplay: banner trong khối ultra‑thin material + nút ẩn tạm thời.
 struct GameplayAdBannerSlot: View {
+    @Binding var isSuppressed: Bool
+
     var body: some View {
         let unit = AppConfig.admobBannerUnitID.trimmingCharacters(in: .whitespacesAndNewlines)
-        if unit.isEmpty {
+        if isSuppressed {
+            Button {
+                withAnimation(.easeInOut(duration: 0.28)) {
+                    isSuppressed = false
+                }
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NaturePalette.champagne.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay {
+                        Capsule().stroke(NaturePalette.champagne.opacity(0.22), lineWidth: 0.75)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(String(localized: "gameplay_banner_show_a11y")))
+        } else if unit.isEmpty {
             AccessibilityBannerSlot()
+                .padding(8)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(NaturePalette.champagne.opacity(0.18), lineWidth: 0.75)
+                }
         } else {
             let adSize = adSizeFor(cgSize: CGSize(width: 320, height: 50))
-            AdMobAnchoredBannerRepresentable(adUnitID: unit)
-                .frame(width: adSize.size.width, height: adSize.size.height)
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(NaturePalette.champagne.opacity(0.2), lineWidth: 0.75)
+                    }
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 4)
+                    AdMobAnchoredBannerRepresentable(adUnitID: unit)
+                        .frame(width: adSize.size.width, height: adSize.size.height)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.28)) {
+                        isSuppressed = true
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(NaturePalette.cream.opacity(0.75))
+                        .frame(width: 22, height: 22)
+                        .background(Color.black.opacity(0.28), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+                .padding(.trailing, 4)
+                .accessibilityLabel(Text(String(localized: "gameplay_banner_hide_a11y")))
+            }
         }
     }
 }

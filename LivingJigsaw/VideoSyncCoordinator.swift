@@ -1,7 +1,8 @@
 import AVFoundation
 import Combine
-import CoreMedia
 import CoreGraphics
+import CoreMedia
+import CoreVideo
 import Foundation
 
 /// Điều phối video theo **level** (file `Video/LevelNN.*`), fallback bundle, rồi synthetic.
@@ -13,18 +14,29 @@ final class VideoSyncCoordinator: ObservableObject {
     @Published private(set) var videoDisplayAspectRatio: CGFloat?
     /// `true` khi đã biết synthetic-only **hoặc** đã đo xong aspect từ video — dùng để bootstrap bàn không bị nhảy layout.
     @Published private(set) var puzzleBoardMetricsReady: Bool = false
+    /// Dùng cho `AVSampleBufferDisplayLayer` khi phát video (jigsaw hoặc legacy looper).
+    @Published private(set) var itemVideoOutput: AVPlayerItemVideoOutput?
 
     private let jigsaw = VideoJigsawManager()
     private var jigsawTimeCancellable: AnyCancellable?
     private var endObserver: NSObjectProtocol?
-    private var legacyPlayer: AVPlayer?
+    private var legacyLooper: AVPlayerLooper?
+    private var legacyCurrentItemObservation: NSKeyValueObservation?
 
     init() {}
+
+    private func stopLegacyLooperAndObservation() {
+        legacyCurrentItemObservation?.invalidate()
+        legacyCurrentItemObservation = nil
+        legacyLooper?.disableLooping()
+        legacyLooper = nil
+    }
 
     func load(level: LevelDefinition, userPickedLibraryVideoURL: URL? = nil) {
         tearDown()
         isUsingSyntheticFallback = true
         player = nil
+        itemVideoOutput = nil
         videoDisplayAspectRatio = nil
         puzzleBoardMetricsReady = false
 
@@ -54,16 +66,17 @@ final class VideoSyncCoordinator: ObservableObject {
                 self.startLegacyLoopingPlayer(url: url)
                 return
             }
-            self.legacyPlayer = nil
             if let endObserver = self.endObserver {
                 NotificationCenter.default.removeObserver(endObserver)
                 self.endObserver = nil
             }
+            self.stopLegacyLooperAndObservation()
             self.player = self.jigsaw.queuePlayer
+            self.itemVideoOutput = self.jigsaw.itemVideoOutput
             self.isUsingSyntheticFallback = false
             self.bindJigsawTimePublisher()
             self.refreshVideoDisplayAspect(from: self.jigsaw.queuePlayer)
-            self.jigsaw.play()
+            self.player?.play()
         }
     }
 
@@ -71,33 +84,43 @@ final class VideoSyncCoordinator: ObservableObject {
         jigsawTimeCancellable?.cancel()
         jigsawTimeCancellable = nil
         jigsaw.tearDown()
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
+        }
+        stopLegacyLooperAndObservation()
+
         let item = AVPlayerItem(url: url)
         Self.applyLightweightDecodeHints(to: item)
-        let p = AVPlayer(playerItem: item)
-        p.actionAtItemEnd = .none
-        p.isMuted = true
-        legacyPlayer = p
-        endObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
-            queue: .main
-        ) { [weak p] _ in
-            p?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-            p?.play()
-        }
-        player = p
+        let pixAttrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+        ]
+        let out = AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
+        let qp = AVQueuePlayer()
+        qp.isMuted = true
+        let looper = AVPlayerLooper(player: qp, templateItem: item)
+        legacyLooper = looper
+        legacyCurrentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
+        itemVideoOutput = out
+        player = qp
         isUsingSyntheticFallback = false
-        refreshVideoDisplayAspect(from: p)
-        p.play()
+        refreshVideoDisplayAspect(from: qp)
+        qp.play()
+        DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
     }
 
     private func enterSyntheticOnly() {
         jigsawTimeCancellable?.cancel()
         jigsawTimeCancellable = nil
         jigsaw.tearDown()
-        legacyPlayer?.pause()
-        legacyPlayer = nil
+        stopLegacyLooperAndObservation()
+        if let p = player {
+            PuzzleVideoFrameHub.shared.unregisterPlayer(p)
+        }
+        player?.pause()
         player = nil
+        itemVideoOutput = nil
         isUsingSyntheticFallback = true
         videoDisplayAspectRatio = nil
         puzzleBoardMetricsReady = true
@@ -113,12 +136,24 @@ final class VideoSyncCoordinator: ObservableObject {
     }
 
     func play() {
-        jigsaw.queuePlayer?.play() ?? legacyPlayer?.play()
+        player?.play()
     }
 
     func pause() {
-        jigsaw.pause()
-        legacyPlayer?.pause()
+        player?.pause()
+    }
+
+    /// Gameplay giữ `muted` để tập trung; khi ghép xong có thể bật tiếng video (session `.playback` để nghe rõ khi ghép xong).
+    func setVideoPlaybackMuted(_ muted: Bool) {
+        player?.isMuted = muted
+        if !muted {
+            player?.volume = 1
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback, options: [.mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true, options: [])
+        } else {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true, options: [])
+        }
     }
 
     func tearDown() {
@@ -129,9 +164,13 @@ final class VideoSyncCoordinator: ObservableObject {
             self.endObserver = nil
         }
         jigsaw.tearDown()
-        legacyPlayer?.pause()
-        legacyPlayer = nil
+        stopLegacyLooperAndObservation()
+        if let p = player {
+            PuzzleVideoFrameHub.shared.unregisterPlayer(p)
+        }
+        player?.pause()
         player = nil
+        itemVideoOutput = nil
         isUsingSyntheticFallback = true
         syncedHostTime = .zero
         videoDisplayAspectRatio = nil
@@ -177,27 +216,7 @@ final class VideoSyncCoordinator: ObservableObject {
     }
 
     private static func bundleURLInVideoFolder(levelId: Int) -> URL? {
-        let stem = String(format: "Level%02d", levelId)
-        for ext in ["mp4", "m4v", "mov", "MP4", "MOV", "M4V"] {
-            if let u = Bundle.main.url(forResource: stem, withExtension: ext, subdirectory: "Video") {
-                return u
-            }
-        }
-        let key = stem.lowercased()
-        guard let videoDir = Bundle.main.resourceURL?.appendingPathComponent("Video", isDirectory: true),
-              let urls = try? FileManager.default.contentsOfDirectory(
-                at: videoDir,
-                includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]
-              )
-        else { return nil }
-        let allowedExt: Set<String> = ["mp4", "m4v", "mov"]
-        return urls.first { url in
-            let nameStem = url.deletingPathExtension().lastPathComponent.lowercased()
-            let ext = url.pathExtension.lowercased()
-            guard allowedExt.contains(ext) else { return false }
-            return nameStem == key || nameStem.hasPrefix("\(key)-") || nameStem.hasPrefix("\(key)_")
-        }
+        LevelVideoCatalog.bundleVideoURL(forLevelId: levelId)
     }
 
     private static func applyLightweightDecodeHints(to item: AVPlayerItem) {

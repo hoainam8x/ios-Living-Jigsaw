@@ -1,4 +1,5 @@
 import AVFoundation
+import QuartzCore
 import SwiftUI
 import UIKit
 
@@ -6,6 +7,8 @@ struct GameplayView: View {
     let level: LevelDefinition
     /// Video/ảnh đã xuất ra file temp từ thư viện — `nil` = dùng video bundle theo level.
     var userPickedLibraryVideoURL: URL?
+    /// `true` khi chơi video bundle level — ghi hoàn thành khi bấm Tiếp tục trên overlay bloom.
+    var advanceProgressWhenCompleted: Bool = true
     var onComplete: () -> Void
     var onLeave: () -> Void
 
@@ -20,9 +23,16 @@ struct GameplayView: View {
     private var cols: Int { level.puzzleColumns }
     private var rows: Int { level.puzzleRows }
 
-    init(level: LevelDefinition, userPickedLibraryVideoURL: URL? = nil, onComplete: @escaping () -> Void, onLeave: @escaping () -> Void) {
+    init(
+        level: LevelDefinition,
+        userPickedLibraryVideoURL: URL? = nil,
+        advanceProgressWhenCompleted: Bool = true,
+        onComplete: @escaping () -> Void,
+        onLeave: @escaping () -> Void
+    ) {
         self.level = level
         self.userPickedLibraryVideoURL = userPickedLibraryVideoURL
+        self.advanceProgressWhenCompleted = advanceProgressWhenCompleted
         self.onComplete = onComplete
         self.onLeave = onLeave
         let n = level.puzzleColumns * level.puzzleRows
@@ -37,7 +47,12 @@ struct GameplayView: View {
     @State private var glowUntil: [Int: Date] = [:]
     /// Đã ghép đủ mảnh — ẩn viền, chờ chiêm ngưỡng rồi `onComplete`.
     @State private var admirePhaseActive = false
-    @State private var admireAutoCompleteTask: DispatchWorkItem?
+    /// Fade viền jigsaw ~0.5s khi vào admire.
+    @State private var admireOutlineFade: CGFloat = 1
+    /// Ẩn lớp mảnh đã ghép để lộ video full bàn + bloom scale.
+    @State private var admirePlacedPieceOpacity: CGFloat = 1
+    @State private var admireBoardScale: CGFloat = 1
+    @State private var admireVideoBrightness: Double = 0
     @State private var didFireLevelComplete = false
     /// Rung khi **vừa đi vào** vùng gần ô đúng (cạnh bắt CoreHaptics).
     @State private var hotSnapPieces: Set<Int> = []
@@ -45,6 +60,8 @@ struct GameplayView: View {
     @State private var dragDidMovePiece: Set<Int> = []
     /// Tránh `playTactileAtPan` mỗi frame (stop/schedule buffer) — gây giật chính luồng + audio.
     @State private var dragTactileBucket: Int = -1
+    /// Giới hạn tần suất nhịp nam châm (UIImpactFeedbackGenerator).
+    @State private var lastMagneticPulseTime: CFTimeInterval = 0
     /// Sau intro ném mảnh — mới cho kéo / xoay.
     @State private var pieceGestureReady = false
     @State private var introThrowTask: Task<Void, Never>?
@@ -53,6 +70,11 @@ struct GameplayView: View {
     /// Intro: nghiêng nhẹ rồi về 0 khi chạm ô.
     @State private var introTiltDegrees: [Int: Double] = [:]
     @State private var activelyDraggedPieceId: Int?
+    /// Mảnh đang “chọn” (ưu tiên z-order + viền) — giữ sau tap/xoay cho đến khi chọn mảnh khác hoặc ghép xong.
+    @State private var selectedUnplacedPieceId: Int?
+    @State private var gameplayAdBannerSuppressed = false
+    @State private var bloomCelebrationPresented = false
+    @State private var bloomPresentationDelayTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -62,6 +84,13 @@ struct GameplayView: View {
                 .ignoresSafeArea()
 
             gameplayGeometry()
+
+            if bloomCelebrationPresented {
+                BloomCelebrationOverlayPanel(level: level, immersiveBackground: false, onContinue: finishAfterCelebration)
+                    .environmentObject(spatial)
+                    .transition(.opacity.combined(with: .scale(1.02)))
+                    .zIndex(600)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(edges: [.top, .bottom])
@@ -88,14 +117,6 @@ struct GameplayView: View {
                     .minimumScaleFactor(0.78)
                     .frame(maxWidth: 320)
             }
-            if admirePhaseActive {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "gameplay_next")) {
-                        fireLevelCompleteOnce()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
         }
     }
 
@@ -119,6 +140,8 @@ struct GameplayView: View {
                 HapticsService.prepare()
                 coordinator.load(level: level, userPickedLibraryVideoURL: userPickedLibraryVideoURL)
                 coordinator.play()
+                let placed = pieces.filter(\.isPlaced).count
+                spatial.beginGameplaySession(level: level, placedCount: placed)
                 if coordinator.puzzleBoardMetricsReady {
                     bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
                 }
@@ -128,11 +151,16 @@ struct GameplayView: View {
                 bootstrapIfNeeded(layout: layout, playfieldWidth: layout.playfieldWidth)
             }
             .onDisappear {
-                admireAutoCompleteTask?.cancel()
-                admireAutoCompleteTask = nil
+                bloomPresentationDelayTask?.cancel()
+                bloomPresentationDelayTask = nil
                 introThrowTask?.cancel()
                 introThrowTask = nil
+                spatial.endGameplaySession()
+                spatial.setDragShimmerActive(false, reduceMotion: reduceMotion)
+                spatial.updateDragProximityFocus(focus01: 0, stereoPan: 0, reduceMotion: reduceMotion)
+                coordinator.setVideoPlaybackMuted(true)
                 coordinator.pause()
+                selectedUnplacedPieceId = nil
             }
         }
         // Mở rộng chiều cao đo được (tránh GeometryReader trong Navigation chỉ = vùng dưới nav → spawn bị “thấp”).
@@ -189,6 +217,8 @@ struct GameplayView: View {
                     let g = admirePhaseActive ? false : glowActive(for: piece.id)
                     pieceView(piece: piece, center: c, size: layout.cell, globalTime: globalTime, glow: g, introExtraDegrees: 0)
                         .position(c)
+                        .opacity(admirePhaseActive ? admirePlacedPieceOpacity : 1)
+                        .brightness(admirePhaseActive ? admireVideoBrightness * 0.35 : 0)
                         .zIndex(2 + Double(piece.correctIndex))
                 }
 
@@ -221,7 +251,7 @@ struct GameplayView: View {
                         Color.clear
                             .frame(maxWidth: .infinity, maxHeight: 50)
                             .allowsHitTesting(false)
-                        GameplayAdBannerSlot()
+                        GameplayAdBannerSlot(isSuppressed: $gameplayAdBannerSuppressed)
                         Color.clear
                             .frame(maxWidth: .infinity, maxHeight: 50)
                             .allowsHitTesting(false)
@@ -265,18 +295,62 @@ struct GameplayView: View {
         }
         .onChange(of: pieces) { _, new in
             guard new.allSatisfy(\.isPlaced), !admirePhaseActive else { return }
+            spatial.celebrateSymphonyFull()
             admirePhaseActive = true
-            let task = DispatchWorkItem { fireLevelCompleteOnce() }
-            admireAutoCompleteTask = task
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: task)
+            admireOutlineFade = 1
+            admirePlacedPieceOpacity = 1
+            admireBoardScale = 1
+            admireVideoBrightness = 0
+            withAnimation(.easeOut(duration: 0.5)) {
+                admireOutlineFade = 0
+            }
+            if reduceMotion {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        admireBoardScale = 1.012
+                        admireVideoBrightness = 0.045
+                    }
+                }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    withAnimation(.spring(response: 0.72, dampingFraction: 0.68)) {
+                        admireBoardScale = 1.048
+                        admireVideoBrightness = 0.09
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                    guard admirePhaseActive else { return }
+                    withAnimation(.easeOut(duration: 0.65)) {
+                        admireBoardScale = 1.018
+                        admireVideoBrightness = 0.05
+                    }
+                }
+            }
+            withAnimation(.easeOut(duration: 0.52).delay(0.28)) {
+                admirePlacedPieceOpacity = 0
+            }
+            if !coordinator.isUsingSyntheticFallback {
+                coordinator.setVideoPlaybackMuted(false)
+            }
+            bloomPresentationDelayTask?.cancel()
+            bloomPresentationDelayTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                bloomCelebrationPresented = true
+            }
         }
     }
 
-    private func fireLevelCompleteOnce() {
+    private func finishAfterCelebration() {
         guard !didFireLevelComplete else { return }
         didFireLevelComplete = true
-        admireAutoCompleteTask?.cancel()
-        admireAutoCompleteTask = nil
+        bloomPresentationDelayTask?.cancel()
+        bloomPresentationDelayTask = nil
+        if advanceProgressWhenCompleted {
+            GameProgress.markCompleted(levelId: level.id)
+        }
+        coordinator.setVideoPlaybackMuted(true)
+        bloomCelebrationPresented = false
         onComplete()
     }
 
@@ -304,13 +378,21 @@ struct GameplayView: View {
         Group {
             if let player = coordinator.player, !coordinator.isUsingSyntheticFallback {
                 if admirePhaseActive {
-                    VideoBoardUnderlayRepresentable(player: player)
+                    VideoBoardUnderlayRepresentable(player: player, itemVideoOutput: coordinator.itemVideoOutput)
                         .frame(width: layout.boardSize.width, height: layout.boardSize.height)
                         .clipped()
+                        .scaleEffect(admireBoardScale, anchor: .center)
+                        .brightness(admireVideoBrightness)
                         .position(layout.boardMidpoint)
                 }
             } else {
+                let anchor = UnitPoint(
+                    x: layout.boardMidpoint.x / max(1, boardW),
+                    y: layout.boardMidpoint.y / max(1, playfieldH)
+                )
                 syntheticBoardUnderlayCells(layout: layout, globalTime: globalTime)
+                    .scaleEffect(admirePhaseActive ? admireBoardScale : 1, anchor: anchor)
+                    .brightness(admirePhaseActive ? admireVideoBrightness : 0)
             }
         }
         .frame(width: boardW, height: playfieldH)
@@ -344,23 +426,36 @@ struct GameplayView: View {
         glow: Bool
     ) -> some View {
         let dragging = activelyDraggedPieceId == piece.id
+        let lifted = selectedUnplacedPieceId == piece.id || dragging
         let introS = introSpawnScale(for: piece.id)
         let ph = max(1, layout.playfieldHeight)
         let pw = max(1, layout.playfieldWidth)
         let stackLayer = Double(center.y / ph) * 8 + Double(center.x / pw) * 0.08 + Double(piece.id) * 1e-4
+        let liftScale: CGFloat = {
+            if dragging { return reduceMotion ? 1.05 : 1.09 }
+            if lifted { return reduceMotion ? 1.025 : 1.05 }
+            return 1
+        }()
         let base = pieceView(
             piece: piece,
             center: center,
             size: layout.cell,
             globalTime: globalTime,
             glow: glow,
-            introExtraDegrees: introTiltValue(for: piece.id)
+            introExtraDegrees: introTiltValue(for: piece.id),
+            selectionEmphasized: lifted && !admirePhaseActive
         )
             .position(center)
             .opacity(introOpacity(for: piece.id))
-            .scaleEffect(introS * (dragging ? 1.06 : 1.0))
-            .shadow(color: dragging ? Color.black.opacity(0.4) : .clear, radius: dragging ? 20 : 0, y: dragging ? 8 : 0)
-            .zIndex(dragging ? 100 : 40 + stackLayer)
+            .scaleEffect(introS * liftScale)
+            .shadow(
+                color: lifted ? Color.black.opacity(dragging ? 0.48 : 0.32) : .clear,
+                radius: dragging ? 24 : (lifted ? 16 : 0),
+                y: dragging ? 10 : (lifted ? 6 : 0)
+            )
+            .zIndex(dragging ? 340 : (lifted ? 240 : 40 + stackLayer))
+            .animation(.spring(response: 0.4, dampingFraction: 0.82), value: selectedUnplacedPieceId)
+            .animation(.spring(response: 0.36, dampingFraction: 0.78), value: activelyDraggedPieceId)
         if pieceGestureReady {
             base
                 .gesture(pieceDragGesture(for: piece, layout: layout, geoWidth: geoWidth))
@@ -385,24 +480,51 @@ struct GameplayView: View {
         return min(1, 0.52 + 0.48 * ((s - 0.06) / max(0.001, 1 - 0.06)))
     }
 
-    private func pieceView(piece: DraggablePiece, center: CGPoint, size: CGSize, globalTime: TimeInterval, glow: Bool, introExtraDegrees: Double = 0) -> some View {
+    private func pieceView(
+        piece: DraggablePiece,
+        center: CGPoint,
+        size: CGSize,
+        globalTime: TimeInterval,
+        glow: Bool,
+        introExtraDegrees: Double = 0,
+        selectionEmphasized: Bool = false
+    ) -> some View {
         let col = piece.correctIndex % cols
         let row = piece.correctIndex / cols
         let edges = PieceEdges.profile(col: col, row: row, cols: cols, rows: rows)
-        return LivingPieceCell(
+        let core = LivingPieceCell(
             palette: level.syntheticPalette,
             col: col,
             row: row,
             cols: cols,
             rows: rows,
             player: coordinator.player,
+            itemVideoOutput: coordinator.itemVideoOutput,
             useSynthetic: coordinator.isUsingSyntheticFallback,
             globalTime: globalTime,
             edges: edges,
             isPlaced: piece.isPlaced,
             bloomPulse: glow,
-            hideOutlines: admirePhaseActive
+            jigsawStrokeOpacity: admirePhaseActive ? admireOutlineFade : 1,
+            selectionEmphasized: selectionEmphasized
         )
+        .frame(width: size.width, height: size.height)
+        return Group {
+            if selectionEmphasized {
+                ZStack {
+                    JigsawPieceShape(edges: edges)
+                        .stroke(NaturePalette.goldRing.opacity(0.5), lineWidth: 11)
+                        .blur(radius: 5)
+                    core
+                    JigsawPieceShape(edges: edges)
+                        .stroke(NaturePalette.luxuryStrokeGradient, lineWidth: 3.2)
+                        .shadow(color: NaturePalette.champagne.opacity(0.95), radius: 12, y: 2)
+                }
+                .frame(width: size.width, height: size.height)
+            } else {
+                core
+            }
+        }
         .frame(width: size.width, height: size.height)
         .rotationEffect(piece.rotationAngle + .degrees(introExtraDegrees))
         .contentShape(JigsawPieceShape(edges: edges))
@@ -417,6 +539,7 @@ struct GameplayView: View {
         let slop: CGFloat = 6
         return DragGesture(minimumDistance: 0)
             .onChanged { value in
+                selectedUnplacedPieceId = piece.id
                 if dragStartCenters[piece.id] == nil {
                     dragStartCenters[piece.id] = centers[piece.id] ?? layout.boardMidpoint
                 }
@@ -432,17 +555,18 @@ struct GameplayView: View {
                 }
                 activelyDraggedPieceId = piece.id
                 dragDidMovePiece.insert(piece.id)
-                proximityHaptics(for: piece, at: clamped, layout: layout)
-                let nx = max(0, min(1, next.x / max(1, geoWidth)))
-                let bucket = Int(nx * 10)
-                if bucket != dragTactileBucket {
-                    dragTactileBucket = bucket
-                    spatial.playTactileAtPan(normalizedX: nx)
-                }
+                processDragSensoryFeedback(
+                    piece: piece,
+                    at: clamped,
+                    layout: layout,
+                    geoWidth: geoWidth
+                )
             }
             .onEnded { value in
                 activelyDraggedPieceId = nil
                 dragTactileBucket = -1
+                spatial.setDragShimmerActive(false, reduceMotion: reduceMotion)
+                spatial.updateDragProximityFocus(focus01: 0, stereoPan: 0, reduceMotion: reduceMotion)
                 let didDrag = dragDidMovePiece.contains(piece.id)
                 dragDidMovePiece.remove(piece.id)
                 let start = dragStartCenters[piece.id] ?? layout.boardMidpoint
@@ -464,6 +588,7 @@ struct GameplayView: View {
     private func rotatePiece(id: Int) {
         guard let idx = pieces.firstIndex(where: { $0.id == id }) else { return }
         guard !pieces[idx].isPlaced else { return }
+        selectedUnplacedPieceId = id
         let next = pieces[idx].rotationQuarterTurns + 1
         withAnimation(.spring(response: 0.46, dampingFraction: 0.74)) {
             pieces[idx].rotationQuarterTurns = next
@@ -480,19 +605,51 @@ struct GameplayView: View {
         return "\(motion). \(base)"
     }
 
-    private func proximityHaptics(for piece: DraggablePiece, at point: CGPoint, layout: BoardLayout) {
+    private func processDragSensoryFeedback(
+        piece: DraggablePiece,
+        at point: CGPoint,
+        layout: BoardLayout,
+        geoWidth: CGFloat
+    ) {
         let target = layout.slotCenter(forIndex: piece.correctIndex)
         let d = hypot(point.x - target.x, point.y - target.y)
         let cellM = min(layout.cell.width, layout.cell.height)
         let hotR = min(100, max(36, cellM * 0.58))
-        let enteringHot = d < hotR
-        if enteringHot {
+        let farR = hotR * 2.75
+        let focus01 = Float(max(0, min(1, 1 - d / max(farR, 1))))
+        let nx = max(0, min(1, point.x / max(1, geoWidth)))
+        let stereo = Float(nx * 2 - 1)
+        spatial.updateDragProximityFocus(focus01: focus01, stereoPan: stereo, reduceMotion: reduceMotion)
+        spatial.setDragShimmerActive(true, reduceMotion: reduceMotion)
+
+        let inHot = d < hotR
+        if inHot {
             if !hotSnapPieces.contains(piece.id) {
                 hotSnapPieces.insert(piece.id)
-                HapticsService.playProximitySoft()
+                if !reduceMotion {
+                    HapticsService.playProximitySoft()
+                }
+            }
+            if !reduceMotion {
+                let now = CACurrentMediaTime()
+                if now - lastMagneticPulseTime >= 0.052 {
+                    lastMagneticPulseTime = now
+                    let near01 = CGFloat(max(0, min(1, 1 - d / max(hotR, 1))))
+                    HapticsService.playMagneticMicroPulse(intensity: 0.12 + near01 * 0.28)
+                }
             }
         } else {
             hotSnapPieces.remove(piece.id)
+        }
+
+        if d > farR * 1.02 {
+            let bucket = Int(nx * 10)
+            if bucket != dragTactileBucket {
+                dragTactileBucket = bucket
+                spatial.playTactileAtPan(normalizedX: nx)
+            }
+        } else {
+            dragTactileBucket = -1
         }
     }
 
@@ -505,8 +662,12 @@ struct GameplayView: View {
         let orientationOK = p.normalizedQuarterTurns == 0
         if d <= snapR, orientationOK {
             activelyDraggedPieceId = nil
+            if selectedUnplacedPieceId == p.id {
+                selectedUnplacedPieceId = nil
+            }
             p.isPlaced = true
             p.rotationQuarterTurns = 0
+            let placedAfterSnap = pieces.filter(\.isPlaced).count + 1
             var snapTxn = Transaction()
             snapTxn.disablesAnimations = true
             withTransaction(snapTxn) {
@@ -515,8 +676,9 @@ struct GameplayView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
                 centers[p.id] = target
             }
-            HapticsService.playSnapRigid()
+            HapticsService.playSnapMatchHeavy()
             spatial.playSnapLayeredSuccess()
+            spatial.syncSymphonyLayers(placedCount: placedAfterSnap, total: cols * rows)
             glowUntil[p.id] = Date().addingTimeInterval(1.0)
             UIAccessibility.post(notification: .announcement, argument: String(localized: "piece_connected"))
         } else if d <= snapR, !orientationOK, !forced {
@@ -541,6 +703,7 @@ struct GameplayView: View {
         // Tránh frame SwiftUI lần đầu = 0 / quá thấp → spawn rơi vào `boardMidpoint` (cụm giữa màn).
         guard layout.playfieldHeight >= 160, layout.playfieldWidth >= 160 else { return }
         hasBootstrapped = true
+        selectedUnplacedPieceId = nil
         pieceGestureReady = false
         lastLayoutSnapshot = layout
         let fieldW = max(1, playfieldWidth)
@@ -780,12 +943,13 @@ struct GameplayView: View {
 
 private struct VideoBoardUnderlayRepresentable: UIViewRepresentable {
     let player: AVPlayer
+    let itemVideoOutput: AVPlayerItemVideoOutput?
 
     func makeUIView(context: Context) -> VideoFullBoardUIView {
-        VideoFullBoardUIView(player: player)
+        VideoFullBoardUIView(player: player, itemVideoOutput: itemVideoOutput)
     }
 
     func updateUIView(_ uiView: VideoFullBoardUIView, context: Context) {
-        uiView.replacePlayer(player)
+        uiView.replacePlayer(player, itemVideoOutput: itemVideoOutput)
     }
 }

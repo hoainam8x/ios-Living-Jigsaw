@@ -17,6 +17,8 @@
 "gameplay_next" = "Tiếp tục";
 "gameplay_audio_hint" = "Dùng tai nghe để cảm nhận vị trí âm thanh.";
 "gameplay_piece_gesture_hint" = "Giữ rồi kéo để di chuyển; chạm nhanh xoay 90°.";
+"gameplay_banner_hide_a11y" = "Ẩn tạm thời banner quảng cáo";
+"gameplay_banner_show_a11y" = "Hiện lại banner quảng cáo";
 "piece_rotated_a11y" = "Đã xoay 90 độ";
 "piece_connected" = "Đã ghép mảnh";
 "a11y_piece_live_motion" = "Mảnh ghép đang chuyển động";

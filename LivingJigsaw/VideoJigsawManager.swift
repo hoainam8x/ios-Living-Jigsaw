@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import CoreMedia
+import CoreVideo
 import Foundation
 
 /// Quản lý **một** timeline video dùng chung cho mọi mảnh (mask = cửa sổ vào cùng buffer).
@@ -12,9 +13,12 @@ final class VideoJigsawManager: ObservableObject {
     @Published private(set) var queuePlayer: AVQueuePlayer?
     /// Timeline chính (dùng cho debug / UI sync; các layer vẫn lấy trực tiếp từ player).
     @Published private(set) var currentHostTime: CMTime = .zero
+    /// Xuất pixel buffer đồng bộ looper → `AVSampleBufferDisplayLayer` (không khựng loop).
+    private(set) var itemVideoOutput: AVPlayerItemVideoOutput?
 
     private var looper: AVPlayerLooper?
     private var timeObserverToken: Any?
+    private var currentItemObservation: NSKeyValueObservation?
 
     /// Quét lại danh sách file video (gọi khi thêm file mới vào bundle `Video/` sau khi build lại, hoặc sau khi đổi thư mục DEBUG).
     func refreshDiscoveredVideos() {
@@ -48,8 +52,11 @@ final class VideoJigsawManager: ObservableObject {
         }
     }
 
-    /// Khớp `Level01.mp4`, `Level01-Ten.mp4`, `LEVEL02_clip.MOV`, … (không phân biệt hoa thường).
+    /// Ưu `LevelVideoCatalog`; sau đó danh sách đã quét (DEBUG folder, bundle `Video/`).
     func resolvedURL(forLevelId levelId: Int) -> URL? {
+        if let catalog = LevelVideoCatalog.bundleVideoURL(forLevelId: levelId) {
+            return catalog
+        }
         refreshDiscoveredVideos()
         let key = "level\(String(format: "%02d", levelId))"
         return discoveredVideoURLs.first { url in
@@ -78,12 +85,20 @@ final class VideoJigsawManager: ObservableObject {
             await MainActor.run {
                 let item = AVPlayerItem(asset: asset)
                 Self.applyDecodeOptimizations(to: item)
+                let pixAttrs: [String: Any] = [
+                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+                    kCVPixelBufferMetalCompatibilityKey as String: true,
+                ]
+                let out = AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
+                self.itemVideoOutput = out
                 let qp = AVQueuePlayer()
                 qp.isMuted = true
                 self.queuePlayer = qp
                 self.looper = AVPlayerLooper(player: qp, templateItem: item)
+                self.currentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
                 self.installHostTimeObserver(on: qp)
                 qp.play()
+                DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
             }
             return true
         } catch {
@@ -103,6 +118,11 @@ final class VideoJigsawManager: ObservableObject {
     }
 
     func tearDown() {
+        currentItemObservation?.invalidate()
+        currentItemObservation = nil
+        if let qp = queuePlayer {
+            PuzzleVideoFrameHub.shared.unregisterPlayer(qp)
+        }
         if let token = timeObserverToken, let qp = queuePlayer {
             qp.removeTimeObserver(token)
         }
@@ -112,6 +132,7 @@ final class VideoJigsawManager: ObservableObject {
         queuePlayer?.pause()
         queuePlayer?.removeAllItems()
         queuePlayer = nil
+        itemVideoOutput = nil
         currentHostTime = .zero
     }
 

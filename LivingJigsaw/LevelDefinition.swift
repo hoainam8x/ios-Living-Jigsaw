@@ -40,7 +40,7 @@ struct LevelDefinition: Hashable, Identifiable {
         all.first { $0.id == id } ?? all[0]
     }
 
-    /// Level 1–4: 2×2; 5–8: 3×3; 9–12: 4×4 (tối đa).
+    /// Level 1–4: 2×2; 5–8: 3×3; 9–12: 4×4 (tối đa). Thêm level: bổ sung `LevelVideoCatalog.entries` (stem file trong `Video/`).
     static let all: [LevelDefinition] = [
         LevelDefinition(id: 1, stage: .healingNature, titleKey: "level_01_title", subtitleKey: "level_01_subtitle", syntheticPalette: .stage1a, puzzleColumns: 2, puzzleRows: 2),
         LevelDefinition(id: 2, stage: .healingNature, titleKey: "level_02_title", subtitleKey: "level_02_subtitle", syntheticPalette: .stage1b, puzzleColumns: 2, puzzleRows: 2),

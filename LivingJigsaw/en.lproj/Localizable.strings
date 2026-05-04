@@ -20,6 +20,8 @@
 "gameplay_next" = "Continue";
 "gameplay_audio_hint" = "Use headphones to feel where sounds sit in space.";
 "gameplay_piece_gesture_hint" = "Hold, then drag to move. Quick tap rotates 90°.";
+"gameplay_banner_hide_a11y" = "Hide advertisement banner";
+"gameplay_banner_show_a11y" = "Show advertisement banner";
 "piece_rotated_a11y" = "Rotated 90 degrees";
 "piece_connected" = "Piece connected";
 "a11y_piece_live_motion" = "Puzzle piece is in motion";
