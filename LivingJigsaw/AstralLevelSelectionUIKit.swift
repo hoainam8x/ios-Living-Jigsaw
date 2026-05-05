@@ -92,6 +92,10 @@ final class AstralLevelCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         contentView.backgroundColor = .clear
+        
+        // Start với alpha = 0 và scale nhỏ cho fade in animation
+        alpha = 0
+        transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
 
         parallaxHost.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(parallaxHost)
@@ -200,22 +204,60 @@ final class AstralLevelCell: UICollectionViewCell {
         thumbView.image = thumbnail
         thumbView.backgroundColor = AstralLevelPaletteUIColor.deep(for: level.id)
         parallaxHost.transform = CGAffineTransform(translationX: zigOffset, y: 0)
+        
+        // Fade in animation khi cell được configure lần đầu
+        if alpha < 0.1 {
+            UIView.animate(
+                withDuration: 0.6,
+                delay: 0,
+                usingSpringWithDamping: 0.75,
+                initialSpringVelocity: 0.3,
+                options: [.curveEaseOut]
+            ) {
+                self.alpha = 0.75  // Default alpha khi không focus
+                self.transform = .identity
+            }
+        }
     }
 
     func applyFocusState(focused: Bool, auraColor: UIColor, showVideo: Bool) {
         let scale: CGFloat = focused ? 1.25 : 1.0
-        UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+        let alpha: CGFloat = focused ? 1.0 : 0.75
+        
+        // Smooth spring animation cho scale và fade
+        UIView.animate(
+            withDuration: 0.65,
+            delay: 0,
+            usingSpringWithDamping: 0.72,
+            initialSpringVelocity: 0.4,
+            options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState]
+        ) {
             self.transform = CGAffineTransform(scaleX: scale, y: scale)
+            self.alpha = alpha
         }
+        
+        // Smooth fade cho aura glow
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.55)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        
         auraLayer.strokeColor = auraColor.cgColor
         auraLayer.opacity = focused ? 1 : 0
         auraLayer.shadowColor = auraColor.cgColor
         auraLayer.shadowRadius = focused ? 14 : 0
         auraLayer.shadowOpacity = focused ? 0.9 : 0
         auraLayer.shadowOffset = .zero
+        
+        CATransaction.commit()
 
-        blurView.isHidden = showVideo && focused
-        thumbView.isHidden = showVideo && focused
+        // Smooth fade cho blur và thumb
+        UIView.animate(withDuration: 0.35, delay: 0, options: [.curveEaseInOut]) {
+            self.blurView.alpha = (showVideo && focused) ? 0 : 0.92
+            self.thumbView.alpha = (showVideo && focused) ? 0 : 1.0
+        } completion: { _ in
+            self.blurView.isHidden = showVideo && focused
+            self.thumbView.isHidden = showVideo && focused
+        }
     }
 
     func setParallax(zigOffset: CGFloat, extraY: CGFloat) {
@@ -297,7 +339,7 @@ final class AstralLevelSelectionViewController: UIViewController, UICollectionVi
         collectionView.showsVerticalScrollIndicator = false
         collectionView.delegate = self
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.decelerationRate = .fast
+        collectionView.decelerationRate = .normal  // Smooth deceleration cho cảm giác cuộn tự nhiên hơn
         collectionView.register(AstralLevelCell.self, forCellWithReuseIdentifier: AstralLevelCell.reuseId)
         collectionView.dataSource = self
         view.addSubview(collectionView)
@@ -444,7 +486,20 @@ final class AstralLevelSelectionViewController: UIViewController, UICollectionVi
             }
         }
         if let attr = cv.layoutAttributesForItem(at: IndexPath(item: best, section: 0)) {
-            targetContentOffset.pointee.y = attr.center.y - cv.bounds.height * 0.5
+            let targetY = attr.center.y - cv.bounds.height * 0.5
+            
+            // Sử dụng spring animation cho snap mượt mà với gia tốc tự nhiên
+            targetContentOffset.pointee = cv.contentOffset  // Cancel default deceleration
+            
+            UIView.animate(
+                withDuration: 0.75,
+                delay: 0,
+                usingSpringWithDamping: 0.82,
+                initialSpringVelocity: abs(velocity.y * 0.15),  // Kế thừa velocity từ gesture
+                options: [.curveEaseOut, .allowUserInteraction]
+            ) {
+                cv.setContentOffset(CGPoint(x: cv.contentOffset.x, y: targetY), animated: false)
+            }
         }
     }
 

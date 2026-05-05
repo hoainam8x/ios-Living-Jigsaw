@@ -228,22 +228,18 @@ private struct BloomFullscreenVideoRepresentable: UIViewRepresentable {
         if #available(iOS 15.0, *) {
             item.preferredMaximumResolution = CGSize(width: 1280, height: 720)
         }
-        let pixAttrs: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-            kCVPixelBufferMetalCompatibilityKey as String: true,
-        ]
-        let out = AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
         let qp = AVQueuePlayer()
-        qp.isMuted = true
+        qp.isMuted = false  // Bật âm thanh để người chơi thụ hưởng kết quả
+        qp.volume = 0.7     // Âm lượng vừa phải
+        qp.actionAtItemEnd = .none  // Quan trọng: không pause khi item kết thúc
         let looper = AVPlayerLooper(player: qp, templateItem: item)
-        context.coordinator.currentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
         context.coordinator.looper = looper
-        context.coordinator.videoOutput = out
         context.coordinator.player = qp
         context.coordinator.loadedURL = url
+        // Đảm bảo player tiếp tục chạy
         qp.play()
-        DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
-        return VideoFullBoardUIView(player: qp, itemVideoOutput: out)
+        // Không dùng AVPlayerItemVideoOutput - dùng AVPlayerLayer trực tiếp để looper hoạt động tốt hơn
+        return VideoFullBoardUIView(player: qp, itemVideoOutput: nil)
     }
 
     func updateUIView(_ uiView: VideoFullBoardUIView, context: Context) {
@@ -256,21 +252,21 @@ private struct BloomFullscreenVideoRepresentable: UIViewRepresentable {
             if #available(iOS 15.0, *) {
                 item.preferredMaximumResolution = CGSize(width: 1280, height: 720)
             }
-            let pixAttrs: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-                kCVPixelBufferMetalCompatibilityKey as String: true,
-            ]
-            let out = AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
             let qp = AVQueuePlayer()
-            qp.isMuted = true
+            qp.isMuted = false  // Bật âm thanh để người chơi thụ hưởng kết quả
+            qp.volume = 0.7     // Âm lượng vừa phải
+            qp.actionAtItemEnd = .none  // Quan trọng: không pause khi item kết thúc
             let looper = AVPlayerLooper(player: qp, templateItem: item)
-            context.coordinator.currentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
             context.coordinator.looper = looper
-            context.coordinator.videoOutput = out
             context.coordinator.player = qp
-            uiView.replacePlayer(qp, itemVideoOutput: out)
+            // Không dùng AVPlayerItemVideoOutput - dùng AVPlayerLayer trực tiếp
+            uiView.replacePlayer(qp, itemVideoOutput: nil)
             qp.play()
-            DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
+        } else {
+            // Đảm bảo player vẫn đang chạy nếu bị dừng
+            if let player = context.coordinator.player, player.rate == 0 {
+                player.play()
+            }
         }
     }
 
