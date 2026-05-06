@@ -1,0 +1,20 @@
+# DUNA MASTER RULES v2.0
+
+## 1. UI/UX & LAYOUT (ZEN-MODERNISM)
+- Priority: Negative space, simple icons, and Bullet points over text walls.
+- Materials: Use Ultra Thin Material (Glassmorphism) for overlays.
+- Geometry: Large corner radii (min 30pt) and Bezier curves.
+- Spacing: Line-height 1.5+, wide letter-spacing for premium feel.
+
+## 2. TECHNICAL & PERFORMANCE
+- Performance: Must maintain 60 FPS. Optimize SpriteKit/Metal render loops.
+- Memory: Explicitly deinit AVPlayers and Emitters to avoid leaks.
+- Animations: Use Ease-In-Out or Spring (0.4s - 0.6s).
+
+## 3. ADMOB IMPLEMENTATION
+- Dev Mode: Use Test Unit IDs. Implement detailed logging for ad states.
+- Prod Mode: Use #if DEBUG for ID switching. Never hard-code real IDs.
+- UI: Ads must have a Blur background (Glassmorphism) to fit the Zen theme.
+
+## 4. INCLUSIVITY (ACCESSIBILITY)
+- Features: Support VoiceOver, Speech Synthesis for descriptions, and Spatial Audio Panning for blind users.

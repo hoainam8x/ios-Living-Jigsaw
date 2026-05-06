@@ -24,9 +24,18 @@ enum LibraryPickedMediaExportError: LocalizedError {
 /// Xuất `PhotosPickerItem` → file URL dùng được với `AVPlayer` (video copy; ảnh → MP4 tĩnh ngắn).
 enum LibraryPickedMediaExporter {
     static func exportToTempVideoURL(from item: PhotosPickerItem) async throws -> URL {
-        if let v = try? await item.loadTransferable(type: ImportedVideoMovie.self) { return v.url }
-        if let v = try? await item.loadTransferable(type: ImportedVideoMPEG4.self) { return v.url }
-        if let v = try? await item.loadTransferable(type: ImportedVideoQuickTime.self) { return v.url }
+        // Thử load video trực tiếp
+        if let v = try? await item.loadTransferable(type: ImportedVideoMovie.self) {
+            return try await reexportVideoWithCorrectOrientation(v.url)
+        }
+        if let v = try? await item.loadTransferable(type: ImportedVideoMPEG4.self) {
+            return try await reexportVideoWithCorrectOrientation(v.url)
+        }
+        if let v = try? await item.loadTransferable(type: ImportedVideoQuickTime.self) {
+            return try await reexportVideoWithCorrectOrientation(v.url)
+        }
+        
+        // Ảnh → video tĩnh
         if let img = try? await item.loadTransferable(type: ImportedRasterImage.self) {
             return try await StillImageVideoExporter.writeShortLoopVideo(from: img.uiImage, durationSeconds: 3)
         }
@@ -35,6 +44,74 @@ enum LibraryPickedMediaExporter {
             return try await StillImageVideoExporter.writeShortLoopVideo(from: ui, durationSeconds: 3)
         }
         throw LibraryPickedMediaExportError.unsupportedKind
+    }
+    
+    /// Re-export video với preferredTransform được áp dụng để orientation luôn đúng
+    private static func reexportVideoWithCorrectOrientation(_ sourceURL: URL) async throws -> URL {
+        let asset = AVURLAsset(url: sourceURL)
+        
+        // Kiểm tra xem video có cần transform không
+        let tracks = try await asset.load(.tracks)
+        guard let videoTrack = tracks.first(where: { $0.mediaType == .video }) else {
+            // Không có video track, return nguyên file
+            return sourceURL
+        }
+        
+        let transform = try await videoTrack.load(.preferredTransform)
+        let naturalSize = try await videoTrack.load(.naturalSize)
+        
+        // Cần re-export với orientation đúng
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("oriented-\(UUID().uuidString).mp4", isDirectory: false)
+        
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+        
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+            throw LibraryPickedMediaExportError.transferFailed("Cannot create export session")
+        }
+        
+        exportSession.outputURL = outputURL
+        exportSession.outputFileType = .mp4
+        exportSession.shouldOptimizeForNetworkUse = true
+        
+        // Video composition: đưa khung đã xoay về gốc (0,0) — chỉ `setTransform(preferred)` dễ bị lệch/clipping khi origin âm.
+        let videoComposition = AVMutableVideoComposition()
+        let rawTransformed = CGRect(origin: .zero, size: naturalSize).applying(transform)
+        let renderW = abs(rawTransformed.width)
+        let renderH = abs(rawTransformed.height)
+        videoComposition.renderSize = CGSize(width: renderW, height: renderH)
+        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+        
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = CMTimeRange(start: .zero, duration: try await asset.load(.duration))
+        
+        let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+        let normalizeOrigin = CGAffineTransform(translationX: -rawTransformed.origin.x, y: -rawTransformed.origin.y)
+        // `normalize.concatenating(transform)` * p = normalize * (transform * p)
+        let exportTransform = normalizeOrigin.concatenating(transform)
+        layerInstruction.setTransform(exportTransform, at: .zero)
+        
+        instruction.layerInstructions = [layerInstruction]
+        videoComposition.instructions = [instruction]
+        
+        exportSession.videoComposition = videoComposition
+        
+        await exportSession.export()
+        
+        switch exportSession.status {
+        case .completed:
+            return outputURL
+        case .failed:
+            throw LibraryPickedMediaExportError.transferFailed(
+                exportSession.error?.localizedDescription ?? "Export failed"
+            )
+        case .cancelled:
+            throw LibraryPickedMediaExportError.transferFailed("Export cancelled")
+        default:
+            throw LibraryPickedMediaExportError.transferFailed("Export unknown error")
+        }
     }
 }
 
@@ -107,7 +184,8 @@ private enum StillImageVideoExporter {
     }
 
     static func writeShortLoopVideo(from image: UIImage, durationSeconds: Double = 3) async throws -> URL {
-        guard let cg = scaledEvenCGImage(from: image) else { throw ExportError.noImage }
+        let normalized = normalizedUpImage(image)
+        guard let cg = scaledEvenCGImage(from: normalized) else { throw ExportError.noImage }
         let w = cg.width
         let h = cg.height
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("libstill-\(UUID().uuidString).mp4", isDirectory: false)
@@ -184,6 +262,17 @@ private enum StillImageVideoExporter {
             image.draw(in: CGRect(x: 0, y: 0, width: tw, height: th))
         }
         return out.cgImage
+    }
+
+    /// Chuẩn hóa orientation metadata về pixel `.up` để tránh xuất MP4 bị quay ngang.
+    private static func normalizedUpImage(_ image: UIImage) -> UIImage {
+        if image.imageOrientation == .up { return image }
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        let renderer = UIGraphicsImageRenderer(size: image.size, format: format)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
     }
 
     private static func makePixelBuffer(from cgImage: CGImage, width: Int, height: Int) -> CVPixelBuffer? {

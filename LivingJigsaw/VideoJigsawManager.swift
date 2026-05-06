@@ -20,6 +20,10 @@ final class VideoJigsawManager: ObservableObject {
     private var timeObserverToken: Any?
     private var currentItemObservation: NSKeyValueObservation?
 
+    deinit {
+        tearDown()
+    }
+
     /// Quét lại danh sách file video (gọi khi thêm file mới vào bundle `Video/` sau khi build lại, hoặc sau khi đổi thư mục DEBUG).
     func refreshDiscoveredVideos() {
         var collected: [URL] = []
@@ -81,24 +85,32 @@ final class VideoJigsawManager: ObservableObject {
             let playable = try await asset.load(.isPlayable)
             guard playable else { return false }
             _ = try await asset.load(.duration)
+            let shouldUseSampleOutput = try await Self.canUseSampleBufferPath(for: asset)
 
             await MainActor.run {
                 let item = AVPlayerItem(asset: asset)
                 Self.applyDecodeOptimizations(to: item)
-                let pixAttrs: [String: Any] = [
-                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-                    kCVPixelBufferMetalCompatibilityKey as String: true,
-                ]
-                let out = AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
+                let out: AVPlayerItemVideoOutput? = {
+                    guard shouldUseSampleOutput else { return nil }
+                    let pixAttrs: [String: Any] = [
+                        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+                        kCVPixelBufferMetalCompatibilityKey as String: true,
+                    ]
+                    return AVPlayerItemVideoOutput(pixelBufferAttributes: pixAttrs)
+                }()
                 self.itemVideoOutput = out
                 let qp = AVQueuePlayer()
                 qp.isMuted = true
                 self.queuePlayer = qp
                 self.looper = AVPlayerLooper(player: qp, templateItem: item)
-                self.currentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
+                if let out {
+                    self.currentItemObservation = PlayerLooperVideoOutputBinding.observeCurrentItem(player: qp, output: out)
+                }
                 self.installHostTimeObserver(on: qp)
                 qp.play()
-                DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
+                if let out {
+                    DispatchQueue.main.async { qp.lj_rehomeVideoOutput(out) }
+                }
             }
             return true
         } catch {
@@ -157,7 +169,23 @@ final class VideoJigsawManager: ObservableObject {
         item.preferredForwardBufferDuration = 1.5
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = false
         if #available(iOS 15.0, *) {
-            item.preferredMaximumResolution = CGSize(width: 1280, height: 720)
+            // Khung decode vuông tối đa — tránh giới hạn 1280×720 làm lệch ưu tiên ngang so với video dọc từ thư viện.
+            item.preferredMaximumResolution = CGSize(width: 1920, height: 1920)
         }
+    }
+
+    /// `AVPlayerItemVideoOutput` trả raw pixel theo decode orientation; với video có metadata xoay,
+    /// dùng `AVPlayerLayer` sẽ giữ chiều hiển thị đúng như preview.
+    private static func canUseSampleBufferPath(for asset: AVAsset) async throws -> Bool {
+        let tracks = try await asset.load(.tracks)
+        guard let videoTrack = tracks.first(where: { $0.mediaType == .video }) else { return false }
+        let t = try await videoTrack.load(.preferredTransform)
+        let epsilon: CGFloat = 0.0001
+        let isIdentity =
+            abs(t.a - 1) < epsilon &&
+            abs(t.b) < epsilon &&
+            abs(t.c) < epsilon &&
+            abs(t.d - 1) < epsilon
+        return isIdentity
     }
 }

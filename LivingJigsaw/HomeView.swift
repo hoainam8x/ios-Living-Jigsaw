@@ -4,11 +4,13 @@ import SwiftUI
 struct HomeView: View {
     var onPlayCurrent: () -> Void
     var onOpenLevelMenu: () -> Void
-    var onPlayUserPickedVideo: (URL) -> Void
+    var onPlayUserPickedVideo: (URL, Int) -> Void
 
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var isPreparingUserMedia = false
     @State private var userMediaError: String?
+    @State private var pendingUserMediaURL: URL?
+    @State private var showUserMediaDifficultyPicker = false
     @State private var shimmerOffset: CGFloat = -200
 
     private var currentId: Int { GameProgress.currentLevelId }
@@ -82,6 +84,20 @@ struct HomeView: View {
         }
         .onAppear {
             startShimmerAnimation()
+        }
+        .confirmationDialog(
+            "Chọn độ khó",
+            isPresented: $showUserMediaDifficultyPicker,
+            titleVisibility: .visible
+        ) {
+            Button("2 x 2") { playPendingUserMedia(grid: 2) }
+            Button("3 x 3") { playPendingUserMedia(grid: 3) }
+            Button("4 x 4") { playPendingUserMedia(grid: 4) }
+            Button("Huỷ", role: .cancel) {
+                pendingUserMediaURL = nil
+            }
+        } message: {
+            Text("Chọn lưới để bắt đầu.")
         }
     }
     
@@ -313,10 +329,17 @@ struct HomeView: View {
         do {
             let url = try await LibraryPickedMediaExporter.exportToTempVideoURL(from: item)
             HapticsService.playMenuTap()
-            onPlayUserPickedVideo(url)
+            pendingUserMediaURL = url
+            showUserMediaDifficultyPicker = true
         } catch {
             userMediaError = error.localizedDescription
         }
+    }
+
+    private func playPendingUserMedia(grid: Int) {
+        guard let url = pendingUserMediaURL else { return }
+        pendingUserMediaURL = nil
+        onPlayUserPickedVideo(url, grid)
     }
     
     private func startShimmerAnimation() {

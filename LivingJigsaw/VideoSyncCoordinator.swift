@@ -25,6 +25,10 @@ final class VideoSyncCoordinator: ObservableObject {
 
     init() {}
 
+    deinit {
+        tearDown()
+    }
+
     private func stopLegacyLooperAndObservation() {
         legacyCurrentItemObservation?.invalidate()
         legacyCurrentItemObservation = nil
@@ -223,7 +227,7 @@ final class VideoSyncCoordinator: ObservableObject {
         item.preferredForwardBufferDuration = 1.5
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = false
         if #available(iOS 15.0, *) {
-            item.preferredMaximumResolution = CGSize(width: 1280, height: 720)
+            item.preferredMaximumResolution = CGSize(width: 1920, height: 1920)
         }
     }
 }

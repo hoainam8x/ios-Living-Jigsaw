@@ -7,7 +7,7 @@ struct RootView: View {
         case home
         case levelMenu
         /// `userLibraryVideoURL`: file temp từ ảnh thư viện / video đã chọn.
-        case play(level: LevelDefinition, userLibraryVideoURL: URL?)
+        case play(level: LevelDefinition, userLibraryVideoURL: URL?, userLibraryGridSize: Int?)
     }
 
     @State private var phase: Phase = .home
@@ -104,24 +104,25 @@ private struct RootPhaseSwitch: View {
         switch phase {
         case .home:
             HomeView(
-                onPlayCurrent: { phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: nil) },
+                onPlayCurrent: { phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: nil, userLibraryGridSize: nil) },
                 onOpenLevelMenu: { phase = .levelMenu },
-                onPlayUserPickedVideo: { url in
-                    phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: url)
+                onPlayUserPickedVideo: { url, gridSize in
+                    phase = .play(level: .level(GameProgress.currentLevelId), userLibraryVideoURL: url, userLibraryGridSize: gridSize)
                 }
             )
         case .levelMenu:
             LevelSelectionView(
                 onPickLevel: { level in
-                    phase = .play(level: level, userLibraryVideoURL: nil)
+                    phase = .play(level: level, userLibraryVideoURL: nil, userLibraryGridSize: nil)
                 },
                 onClose: { phase = .home }
             )
-        case .play(let level, let userLibraryVideoURL):
+        case .play(let level, let userLibraryVideoURL, let userLibraryGridSize):
             NavigationStack {
                 GameplayView(
                     level: level,
                     userPickedLibraryVideoURL: userLibraryVideoURL,
+                    userPickedGridSize: userLibraryGridSize,
                     advanceProgressWhenCompleted: userLibraryVideoURL == nil,
                     onComplete: { phase = .home },
                     onLeave: { phase = .home }

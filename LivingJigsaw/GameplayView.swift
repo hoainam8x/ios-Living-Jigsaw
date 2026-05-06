@@ -7,6 +7,8 @@ struct GameplayView: View {
     let level: LevelDefinition
     /// Video/ảnh đã xuất ra file temp từ thư viện — `nil` = dùng video bundle theo level.
     var userPickedLibraryVideoURL: URL?
+    /// Độ khó người dùng chọn cho media thư viện (2...4), `nil` = theo level.
+    var userPickedGridSize: Int?
     /// `true` khi chơi video bundle level — ghi hoàn thành khi bấm Tiếp tục trên overlay bloom.
     var advanceProgressWhenCompleted: Bool = true
     var onComplete: () -> Void
@@ -20,22 +22,34 @@ struct GameplayView: View {
 
     @State private var pieces: [DraggablePiece]
 
-    private var cols: Int { level.puzzleColumns }
-    private var rows: Int { level.puzzleRows }
+    private let puzzleCols: Int
+    private let puzzleRows: Int
+    private var cols: Int { puzzleCols }
+    private var rows: Int { puzzleRows }
 
     init(
         level: LevelDefinition,
         userPickedLibraryVideoURL: URL? = nil,
+        userPickedGridSize: Int? = nil,
         advanceProgressWhenCompleted: Bool = true,
         onComplete: @escaping () -> Void,
         onLeave: @escaping () -> Void
     ) {
         self.level = level
         self.userPickedLibraryVideoURL = userPickedLibraryVideoURL
+        self.userPickedGridSize = userPickedGridSize
         self.advanceProgressWhenCompleted = advanceProgressWhenCompleted
         self.onComplete = onComplete
         self.onLeave = onLeave
-        let n = level.puzzleColumns * level.puzzleRows
+        if userPickedLibraryVideoURL != nil {
+            let grid = max(2, min(4, userPickedGridSize ?? 2))
+            self.puzzleCols = grid
+            self.puzzleRows = grid
+        } else {
+            self.puzzleCols = level.puzzleColumns
+            self.puzzleRows = level.puzzleRows
+        }
+        let n = self.puzzleCols * self.puzzleRows
         _pieces = State(initialValue: (0..<n).map { i in
             DraggablePiece(id: i, correctIndex: i, rotationQuarterTurns: 0, isPlaced: false, dragOffset: .zero)
         })
@@ -108,7 +122,11 @@ struct GameplayView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text(String(localized: String.LocalizationValue(level.titleKey)))
+                Text(
+                    userPickedLibraryVideoURL != nil
+                        ? "Độ khó \(cols)x\(rows)"
+                        : String(localized: String.LocalizationValue(level.titleKey))
+                )
                     .font(.footnote.weight(.semibold))
                     .tracking(0.35)
                     .foregroundStyle(NaturePalette.champagne.opacity(0.95))
@@ -866,11 +884,20 @@ struct GameplayView: View {
     }
 
     private func boardLayout(for geo: GeometryProxy, cols: Int, rows: Int) -> BoardLayout {
-        Self.makeBoardLayout(
+        let contentAR: CGFloat? = {
+            guard !coordinator.isUsingSyntheticFallback else { return nil }
+            guard let ar = coordinator.videoDisplayAspectRatio else { return nil }
+            // Màn chọn media từ thư viện: ưu tiên bố cục dọc theo điện thoại.
+            if userPickedLibraryVideoURL != nil, ar > 1.0 {
+                return 1.0 / ar
+            }
+            return ar
+        }()
+        return Self.makeBoardLayout(
             for: geo,
             cols: cols,
             rows: rows,
-            contentAspectWidthOverHeight: coordinator.isUsingSyntheticFallback ? nil : coordinator.videoDisplayAspectRatio,
+            contentAspectWidthOverHeight: contentAR,
             displayScale: displayScale
         )
     }
